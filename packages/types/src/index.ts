@@ -11,3 +11,4 @@ export {
   type Vector4,
 } from "./core-types";
 export { type EmitOptions, emitDeclarations } from "./emit-dts";
+export { type WrapOptions, wrapAsAmbientGlobal } from "./publish-dts";

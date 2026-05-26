@@ -1,0 +1,62 @@
+import type { Matrix4, Quaternion, Vector, Vector3, Vector4 } from "../src/core-types";
+
+declare global {
+  namespace vmath {
+    function clamp(value: number | Vector3 | Vector4, min: number | Vector3 | Vector4, max: number | Vector3 | Vector4): number | Vector3 | Vector4;
+    function conj(q1: Quaternion): Quaternion;
+    function cross(v1: Vector3, v2: Vector3): Vector3;
+    function dot(v1: Vector3 | Vector4, v2: Vector3 | Vector4): number;
+    function euler_to_quat(x: number | Vector3, y: number, z: number): Quaternion;
+    function inv(m1: Matrix4): Matrix4;
+    function length(v: Vector3 | Vector4 | Quaternion): number;
+    function length_sqr(v: Vector3 | Vector4 | Quaternion): number;
+    function lerp(t: number, v1: Vector3 | Vector4, v2: Vector3 | Vector4): Vector3 | Vector4;
+    function lerp(t: number, q1: Quaternion, q2: Quaternion): Quaternion;
+    function lerp(t: number, n1: number, n2: number): number;
+    function matrix4(): Matrix4;
+    function matrix4(m1: Matrix4): Matrix4;
+    function matrix4_axis_angle(v: Vector3, angle: number): Matrix4;
+    function matrix4_compose(translation: Vector3 | Vector4, rotation: Quaternion, scale: Vector3): Matrix4;
+    function matrix4_frustum(left: number, right: number, bottom: number, top: number, near: number, far: number): Matrix4;
+    function matrix4_look_at(eye: Vector3, look_at: Vector3, up: Vector3): Matrix4;
+    function matrix4_orthographic(left: number, right: number, bottom: number, top: number, near: number, far: number): Matrix4;
+    function matrix4_perspective(fov: number, aspect: number, near: number, far: number): Matrix4;
+    function matrix4_quat(q: Quaternion): Matrix4;
+    function matrix4_rotation_x(angle: number): Matrix4;
+    function matrix4_rotation_y(angle: number): Matrix4;
+    function matrix4_rotation_z(angle: number): Matrix4;
+    function matrix4_scale(scale: Vector3): Matrix4;
+    function matrix4_scale(scale: number): Matrix4;
+    function matrix4_scale(scale_x: number, scale_y: number, scale_z: number): Matrix4;
+    function matrix4_translation(position: Vector3 | Vector4): Matrix4;
+    function mul_per_elem(v1: Vector3 | Vector4, v2: Vector3 | Vector4): Vector3 | Vector4;
+    function normalize(v1: Vector3 | Vector4 | Quaternion): Vector3 | Vector4 | Quaternion;
+    function ortho_inv(m1: Matrix4): Matrix4;
+    function project(v1: Vector3, v2: Vector3): number;
+    function quat(): Quaternion;
+    function quat(q1: Quaternion): Quaternion;
+    function quat(x: number, y: number, z: number, w: number): Quaternion;
+    function quat_axis_angle(v: Vector3, angle: number): Quaternion;
+    function quat_basis(x: Vector3, y: Vector3, z: Vector3): Quaternion;
+    function quat_from_to(v1: Vector3, v2: Vector3): Quaternion;
+    function quat_matrix4(matrix: Matrix4): Quaternion;
+    function quat_rotation_x(angle: number): Quaternion;
+    function quat_rotation_y(angle: number): Quaternion;
+    function quat_rotation_z(angle: number): Quaternion;
+    function quat_to_euler(q: Quaternion): number; // TODO multi-return
+    function rotate(q: Quaternion, v1: Vector3): Vector3;
+    function slerp(t: number, v1: Vector3 | Vector4, v2: Vector3 | Vector4): Vector3 | Vector4;
+    function slerp(t: number, q1: Quaternion, q2: Quaternion): Quaternion;
+    function vector(t: Record<string | number, unknown>): Vector;
+    function vector3(): Vector3;
+    function vector3(n: number): Vector3;
+    function vector3(v1: Vector3): Vector3;
+    function vector3(x: number, y: number, z: number): Vector3;
+    function vector4(): Vector4;
+    function vector4(n: number): Vector4;
+    function vector4(v1: Vector4): Vector4;
+    function vector4(x: number, y: number, z: number, w: number): Vector4;
+  }
+}
+
+export {};
