@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { MODULE_MANIFEST } from "../scripts/regen";
-import { parseDefoldApiDoc } from "../src/api-doc";
-import { emitDeclarations } from "../src/emit-dts";
-import { wrapAsAmbientGlobal } from "../src/publish-dts";
+import { generateModuleDeclaration, MODULE_MANIFEST } from "../scripts/regen";
 
 const GENERATED = resolve(import.meta.dir, "..", "generated");
 
@@ -12,13 +9,7 @@ describe("regen drift guard", () => {
   test.each(
     MODULE_MANIFEST.map((entry) => [entry.namespace, entry] as const),
   )("%s: committed generated file matches a fresh pipeline run byte-for-byte", async (_namespace, entry) => {
-    const module = parseDefoldApiDoc(entry.doc);
-    const emitted = emitDeclarations(module);
-    const fresh = wrapAsAmbientGlobal({
-      namespace: module.namespace,
-      emitted,
-      importsFrom: "../src/core-types",
-    });
+    const { contents: fresh } = generateModuleDeclaration(entry);
     const committed = await Bun.file(resolve(GENERATED, entry.outFile)).text();
     if (committed !== fresh) {
       throw new Error(`${entry.outFile} is stale — run \`bun run regen\` in \`packages/types/\``);

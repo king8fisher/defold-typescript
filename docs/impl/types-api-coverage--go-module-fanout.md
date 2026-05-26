@@ -1,10 +1,10 @@
 # Step: go module fan-out
 
-Status: planned
+Status: shipped
 Goal: types-api-coverage
 PRD: docs/prd/vision.md#types-api-coverage
 Branch: `step/types-api-coverage--go-module-fanout`
-Done when: `packages/types/generated/go.d.ts` exists
+Done when: `packages/types/generated/go.d.ts` exists, the drift-guard tests pass for `go`, and `test-d/ambient.ts` exercises `go.get_position`, `go.get_rotation`, `go.get_id`, and `go.set_position(vmath.vector3(...), _id)`
 
 ## Context
 
@@ -98,6 +98,13 @@ If the actual generated signatures diverge from these expectations after step 1 
 - `packages/types/fixtures/README.md` — append `## go_doc.json` mirroring the `## msg_doc.json` entry.
 - Defold API reference: <https://defold.com/ref/stable/go/> — ground truth for what the fixture must describe.
 
+## Divergences from plan (recorded at implement time)
+
+- **Fixture path**: the `go` doc lives at `doc/gameobject_script.cpp_doc.json` inside `ref-doc.zip` (not `doc/src-script_gameobject.cpp_doc.json` as the plan guessed). The file's `info.namespace` is still `"go"`. `fixtures/README.md` records the real path.
+- **`go.delete` collides with a TS reserved word.** `prepareFunction` in `emit-dts.ts` only rejects non-identifier names via `TS_IDENTIFIER`; `delete` passes that regex but `declare namespace go { function delete(...) }` is a syntax error. The plan's "out of scope: emitter changes" was strict, so the reserved-name filter lives in `scripts/regen.ts` instead of `src/emit-dts.ts` and is shared between the CLI entry-point and the drift-guard test via `generateModuleDeclaration`. Dropped: `go.delete`. Renaming and re-exposing it under a TS-legal alias is a follow-up.
+- **`is_optional: True` is ignored by the emitter.** `emitParameter` only marks a param as `?:` when `nil` is in its `types` array. The `go` doc uses `is_optional` for the `id` parameter on `get_position`/`get_rotation`/`set_position`/etc.; none carry `nil`, so all of those `id` arguments are emitted as required. The test-d uses `go.get_id("/my_object")` to obtain a `Hash` and passes it explicitly. Honoring `is_optional` is a separate emitter slice.
+- **Test-d signatures updated**: `go.get_id` requires `path: string`; `go.get_position`/`get_rotation` require `id`; `go.set_position` is `(position, id)` with both required given the point above.
+
 ## Definition of done
 
 - `packages/types/fixtures/go_doc.json` exists, sourced from the same Defold 1.12.4 `ref-doc.zip` used for vmath and msg, with the source path recorded in `packages/types/fixtures/README.md`.
@@ -105,7 +112,7 @@ If the actual generated signatures diverge from these expectations after step 1 
 - `packages/types/generated/go.d.ts` exists as the committed wrapper output and is byte-equal to a fresh regen run.
 - `packages/types/generated/msg.d.ts` and `packages/types/generated/vmath.d.ts` are byte-stable (no diff from before this slice).
 - `packages/types/index.d.ts` side-effect-imports `./generated/go`, `./generated/msg`, `./generated/vmath` in alphabetical order.
-- `packages/types/test-d/ambient.ts` exercises `go.get_position()`, `go.get_rotation()`, `go.get_id()`, `go.set_position(vmath.vector3(...))`, and the two `// @ts-expect-error` negatives.
+- `packages/types/test-d/ambient.ts` exercises `go.get_id("/my_object")`, `go.get_position(_id)`, `go.get_rotation(_id)`, `go.set_position(vmath.vector3(...), _id)`, and the two `// @ts-expect-error` negatives (real signatures require `id`; see Divergences).
 - `bun run typecheck`, `bun run lint`, and `bun test` all exit 0 from the repo root.
-- No changes to `packages/transpiler`, `packages/cli`, or any file under `packages/types/src/`.
+- No changes to `packages/transpiler`, `packages/cli`, or any file under `packages/types/src/` (the reserved-name filter lives in `packages/types/scripts/regen.ts`, not `src/`).
 - No new top-level dependencies.

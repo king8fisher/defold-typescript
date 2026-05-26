@@ -40,8 +40,8 @@ Bulleted: build green, lint green, tests green, docs updated, etc.
 | [types-api-coverage--vmath-dts-emitter.md](types-api-coverage--vmath-dts-emitter.md) | types-api-coverage | shipped |
 | [types-api-coverage--vmath-package-publish.md](types-api-coverage--vmath-package-publish.md) | types-api-coverage | shipped |
 | [types-api-coverage--msg-module-fanout.md](types-api-coverage--msg-module-fanout.md) | types-api-coverage | shipped |
-| [types-api-coverage--go-module-fanout.md](types-api-coverage--go-module-fanout.md) | types-api-coverage | planned |
+| [types-api-coverage--go-module-fanout.md](types-api-coverage--go-module-fanout.md) | types-api-coverage | shipped |
 
 ## What next
 
-[types-api-coverage--go-module-fanout.md](types-api-coverage--go-module-fanout.md) — add the `go` namespace through `MODULE_MANIFEST` and prove cross-module type refs (`vector3`, `quaternion`, `hash`) in the consumer test-d.
+All steps complete.
