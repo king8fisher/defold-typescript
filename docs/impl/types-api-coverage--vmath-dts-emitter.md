@@ -1,6 +1,6 @@
 # Step: vmath .d.ts emitter
 
-Status: planned
+Status: shipped
 Goal: types-api-coverage
 PRD: docs/prd/vision.md#types-api-coverage
 Branch: `step/types-api-coverage--vmath-dts-emitter`
@@ -20,7 +20,7 @@ Wiring the emitted `.d.ts` into the package's published `types` field — so use
 
 ### Type mapping
 
-Defold's API doc uses raw type tokens (`number`, `string`, `vector3`, `quat`, `matrix4`, `table`, `function`, `hash`, `url`, `boolean`). The emitter maps them to TypeScript via a hand-curated table — auto-deriving the engine value types from the JSON doc is impractical (the doc describes call signatures, not the field shapes of `vector3`, `quat`, etc.).
+Defold's API doc uses raw type tokens (`number`, `string`, `vector3`, `quaternion`, `matrix4`, `table`, `function`, `hash`, `url`, `boolean`). The emitter maps them to TypeScript via a hand-curated table — auto-deriving the engine value types from the JSON doc is impractical (the doc describes call signatures, not the field shapes of `vector3`, `quaternion`, etc.).
 
 | Defold token | TS type                          | Notes                                                   |
 | ------------ | -------------------------------- | ------------------------------------------------------- |
@@ -32,7 +32,7 @@ Defold's API doc uses raw type tokens (`number`, `string`, `vector3`, `quat`, `m
 | `vector`     | `Vector`                         | Hand-declared in `core-types.ts`                        |
 | `vector3`    | `Vector3`                        | Hand-declared in `core-types.ts`                        |
 | `vector4`    | `Vector4`                        | Hand-declared in `core-types.ts`                        |
-| `quat`       | `Quaternion`                     | Hand-declared in `core-types.ts`                        |
+| `quaternion` | `Quaternion`                     | Hand-declared in `core-types.ts` (Defold's JSON uses the long form, not `quat`) |
 | `matrix4`    | `Matrix4`                        | Hand-declared in `core-types.ts`                        |
 | `hash`       | `Hash`                           | Hand-declared (placeholder branded type)                |
 | `url`        | `Url`                            | Hand-declared (placeholder branded type)                |
@@ -57,7 +57,7 @@ All co-located in `packages/types/src/` per the AGENTS.md convention.
 - [ ] `packages/types/src/core-types.test.ts` — `Vector3` is assignable to `{ x: number; y: number; z: number }` (compile-only check via a `satisfies` expression on a literal). Catches accidental field renames.
 - [ ] `packages/types/src/core-types.test.ts` — `DEFOLD_TYPE_MAP` maps the expected Defold tokens to the expected TS identifiers (table-driven assertion over the rows in the Context table above).
 - [ ] `packages/types/src/emit-dts.test.ts` — `emitDeclarations` on an empty `ApiModule` (no functions, no variables) emits exactly `declare namespace foo {\n}\n` (or equivalent normalized form — assert via string equality, not regex).
-- [ ] `packages/types/src/emit-dts.test.ts` — emit of the vmath fixture (loaded via `parseDefoldApiDoc(vmathDoc)`) **contains** `declare namespace vmath {`, contains `function vector3(): Vector3;`, contains `function vector3(x: number, y: number, z: number): Vector3;`, and contains `function dot(v1: Vector3, v2: Vector3): number;`.
+- [ ] `packages/types/src/emit-dts.test.ts` — emit of the vmath fixture (loaded via `parseDefoldApiDoc(vmathDoc)`) **contains** `declare namespace vmath {`, contains `function vector3(): Vector3;`, contains `function vector3(x: number, y: number, z: number): Vector3;`, and contains `function dot(v1: Vector3 | Vector4, v2: Vector3 | Vector4): number;` (the fixture's `dot` accepts either width — the union is the natural emission).
 - [ ] `packages/types/src/emit-dts.test.ts` — a function with `types: ["number", "vector3"]` on a parameter emits `number | Vector3` (synthetic `ApiModule`, not via the fixture, so the union case is unambiguous).
 - [ ] `packages/types/src/emit-dts.test.ts` — a function with an unknown Defold type token (`types: ["frobnicator"]`) emits `unknown` and does **not** throw.
 - [ ] `packages/types/src/emit-dts.test.ts` — variables emit as `const PI: number;` inside the namespace.
