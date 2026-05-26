@@ -36,8 +36,8 @@ Bulleted: build green, lint green, tests green, docs updated, etc.
 
 | Step file | Goal | Status |
 | --------- | ---- | ------ |
-| [types-api-coverage--vmath-api-doc-parser.md](types-api-coverage--vmath-api-doc-parser.md) | types-api-coverage | planned |
+| [types-api-coverage--vmath-api-doc-parser.md](types-api-coverage--vmath-api-doc-parser.md) | types-api-coverage | shipped |
 
 ## What next
 
-Run `/implement-step` to execute `types-api-coverage--vmath-api-doc-parser` — land the upstream `vmath_doc.json` fixture and the `parseDefoldApiDoc` parser. This is the foundation every later `types-api-coverage` step (TS emitter, lifecycle hooks, multi-module fan-out, regen script) consumes.
+All steps complete.

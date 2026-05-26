@@ -1,6 +1,6 @@
 # Step: vmath API doc fixture & parser
 
-Status: planned
+Status: shipped
 Goal: types-api-coverage
 PRD: docs/prd/vision.md#types-api-coverage
 Branch: `step/types-api-coverage--vmath-api-doc-parser`
