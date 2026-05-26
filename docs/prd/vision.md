@@ -17,6 +17,7 @@ Authoring Defold games in TypeScript should feel indistinguishable from authorin
 - **Depends on**: none
 - **Impl**:
   - [types-api-coverage--vmath-api-doc-parser.md](../impl/types-api-coverage--vmath-api-doc-parser.md) — first slice: vendor the Defold API doc for `vmath` and parse it into a typed model (foundation for the auto-generation pipeline)
+  - [types-api-coverage--vmath-dts-emitter.md](../impl/types-api-coverage--vmath-dts-emitter.md) — second slice: emit a TypeScript `declare namespace vmath { … }` string from the parsed `ApiModule`, with a hand-curated Defold→TS type mapping for `vector3`/`vector4`/`quat`/`matrix4`
 
 ### transpiler-pipeline
 - **Status**: planned
