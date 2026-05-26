@@ -53,7 +53,7 @@ See [docs/prd/README.md](docs/prd/README.md) and [docs/impl/README.md](docs/impl
 
 ## License
 
-TBD — will mirror or be compatible with the original ts-defold licensing.
+[MIT](LICENSE) — matching the ts-defold ecosystem.
 
 ## Acknowledgements
 

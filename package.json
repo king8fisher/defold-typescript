@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "description": "TypeScript to Lua transpiling for Defold — a faster, agent-friendly successor to ts-defold.",
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "packages/*"
