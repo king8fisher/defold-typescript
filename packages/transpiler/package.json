@@ -1,0 +1,19 @@
+{
+  "name": "@defold-ts/transpiler",
+  "version": "0.0.0",
+  "description": "TypeScript-to-Lua build pipeline tuned for Defold's runtime.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@defold-ts/types": "workspace:*"
+  }
+}
