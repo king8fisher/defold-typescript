@@ -7,7 +7,7 @@ Authoring Defold games in TypeScript should feel indistinguishable from authorin
 ## Goals
 
 ### types-api-coverage
-- **Status**: planned
+- **Status**: in-progress
 - **Why**: Defold's Lua APIs (`go`, `gui`, `msg`, `vmath`, `render`, `physics`, `sound`, `sys`, `http`, etc.) must round-trip through TypeScript with accurate signatures so users get autocomplete and error checking for the engine surface.
 - **What**:
   - All public Defold script-context APIs typed under `packages/types`
@@ -15,7 +15,8 @@ Authoring Defold games in TypeScript should feel indistinguishable from authorin
   - Module exported as `@defold-ts/types`, consumable via a single `import type` from user code
   - Auto-generation pipeline that pulls from the Defold API reference, not hand-maintained
 - **Depends on**: none
-- **Impl**: (none yet)
+- **Impl**:
+  - [types-api-coverage--vmath-api-doc-parser.md](../impl/types-api-coverage--vmath-api-doc-parser.md) — first slice: vendor the Defold API doc for `vmath` and parse it into a typed model (foundation for the auto-generation pipeline)
 
 ### transpiler-pipeline
 - **Status**: planned
