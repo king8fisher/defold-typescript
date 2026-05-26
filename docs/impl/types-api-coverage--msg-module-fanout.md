@@ -1,6 +1,6 @@
 # Step: msg module fan-out (multi-module pipeline)
 
-Status: planned
+Status: shipped
 Goal: types-api-coverage
 PRD: docs/prd/vision.md#types-api-coverage
 Branch: `step/types-api-coverage--msg-module-fanout`
@@ -118,6 +118,10 @@ Co-located per AGENTS.md § Testing.
 - `packages/types/src/publish-dts.ts` — `wrapAsAmbientGlobal` already detects engine-type references (including `Url`) via word-boundary regex; no change.
 - `packages/types/fixtures/README.md` — append an `## msg_doc.json` section mirroring the vmath entry (same Defold 1.12.4 pin).
 - Defold API reference: <https://defold.com/ref/stable/msg/> — ground truth for what the fixture must describe.
+
+## Divergence from plan
+
+`msg.post` has `message: ["table", "nil"]` in its Defold API doc, which the test cases require to type-check as an optional argument. The emitter (`packages/types/src/emit-dts.ts` `emitParameter`) was extended one branch: when a parameter's `types` array contains `"nil"`, the parameter is emitted with a trailing `?` and `"nil"` is filtered out of the union. `vmath` has no `nil`-bearing params, so `generated/vmath.d.ts` remains byte-stable.
 
 ## Definition of done
 

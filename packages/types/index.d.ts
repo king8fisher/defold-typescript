@@ -1,3 +1,4 @@
+import "./generated/msg";
 import "./generated/vmath";
 
 export type { ApiFunction, ApiModule, ApiParameter, ApiVariable } from "./src/api-doc";

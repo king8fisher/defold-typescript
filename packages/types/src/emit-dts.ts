@@ -86,8 +86,10 @@ function emitFunction(prepared: PreparedFunction, mapType: (t: string) => string
 
 function emitParameter(p: ApiParameter, index: number, mapType: (t: string) => string): string {
   const name = TS_IDENTIFIER.test(p.name) ? p.name : `arg${index}`;
-  const ts = p.types.length > 0 ? unionFromTokens(p.types, mapType) : "unknown";
-  return `${name}: ${ts}`;
+  const optional = p.types.includes("nil");
+  const concrete = optional ? p.types.filter((t) => t !== "nil") : p.types;
+  const ts = concrete.length > 0 ? unionFromTokens(concrete, mapType) : "unknown";
+  return `${name}${optional ? "?" : ""}: ${ts}`;
 }
 
 function emitReturn(

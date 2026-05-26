@@ -39,8 +39,8 @@ Bulleted: build green, lint green, tests green, docs updated, etc.
 | [types-api-coverage--vmath-api-doc-parser.md](types-api-coverage--vmath-api-doc-parser.md) | types-api-coverage | shipped |
 | [types-api-coverage--vmath-dts-emitter.md](types-api-coverage--vmath-dts-emitter.md) | types-api-coverage | shipped |
 | [types-api-coverage--vmath-package-publish.md](types-api-coverage--vmath-package-publish.md) | types-api-coverage | shipped |
-| [types-api-coverage--msg-module-fanout.md](types-api-coverage--msg-module-fanout.md) | types-api-coverage | planned |
+| [types-api-coverage--msg-module-fanout.md](types-api-coverage--msg-module-fanout.md) | types-api-coverage | shipped |
 
 ## What next
 
-[types-api-coverage--msg-module-fanout.md](types-api-coverage--msg-module-fanout.md) — generalise the regen pipeline to a manifest and prove fan-out with the `msg` module.
+All steps complete.
