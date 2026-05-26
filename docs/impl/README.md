@@ -37,8 +37,8 @@ Bulleted: build green, lint green, tests green, docs updated, etc.
 | Step file | Goal | Status |
 | --------- | ---- | ------ |
 | [types-api-coverage--vmath-api-doc-parser.md](types-api-coverage--vmath-api-doc-parser.md) | types-api-coverage | shipped |
-| [types-api-coverage--vmath-dts-emitter.md](types-api-coverage--vmath-dts-emitter.md) | types-api-coverage | planned |
+| [types-api-coverage--vmath-dts-emitter.md](types-api-coverage--vmath-dts-emitter.md) | types-api-coverage | shipped |
 
 ## What next
 
-[types-api-coverage--vmath-dts-emitter.md](types-api-coverage--vmath-dts-emitter.md) — emit a TypeScript `declare namespace vmath { … }` from the parsed `ApiModule`, with a hand-curated Defold→TS type mapping for `vector3`/`vector4`/`quat`/`matrix4` and a snapshot-tested vmath emit.
+All steps complete.
