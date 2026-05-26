@@ -4,12 +4,16 @@
   "description": "TypeScript types for the Defold engine's Lua APIs.",
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "types": "./index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.ts"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "regen": "bun scripts/regen.ts"
   }
 }

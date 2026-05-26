@@ -1,10 +1,16 @@
 # Step: vmath package publish (ambient `@defold-ts/types`)
 
-Status: planned
+Status: shipped
 Goal: types-api-coverage
 PRD: docs/prd/vision.md#types-api-coverage
 Branch: `step/types-api-coverage--vmath-package-publish`
-Done when: `packages/types/index.d.ts` exists
+Done when: `packages/types/index.d.ts` exists and re-exports the tooling surface + side-effect-imports `./generated/vmath` so `vmath.vector3(…)` is a typed ambient global.
+
+## Implementation notes (post-ship divergences)
+
+- The `vmath` fixture (`packages/types/fixtures/vmath_doc.json`) carries only functions — no `VARIABLE` entries — so the generated `declare global { namespace vmath { … } }` block has **no `const`-style variables** (no `vmath.PI`). The consumer proof in `test-d/ambient.ts` therefore exercises function ambients only: `vmath.vector3(…)` (positional + zero-arg), `vmath.vector4(…)`, `vmath.dot(…)` returning `number`, plus two `@ts-expect-error` negatives (`vmath.vector3("not a number")` and `const _bad: string = vmath.dot(_v, _v)`). When variables land via a future fixture update, add the PI-style assertions back.
+- Biome flagged the committed generated file for `noUselessEmptyExport` (the `import type` already makes the file a module, so the trailing `export {};` is redundant for the engine-types path; it is still required for the empty-namespace test case the wrapper supports). Resolved by excluding `**/generated` from biome's `files.includes` — the file is machine-output, formatted by the wrapper, and re-checked by the drift-guard test rather than by the linter. The expected `noUnusedImports` flag on `index.d.ts`'s side-effect `import "./generated/vmath";` did **not** fire under the current biome 2.4.x rules, so no `biome-ignore` was needed.
+- `packages/types/tsconfig.json` `rootDir` widened from `src` to `.` so the new `index.d.ts`, `generated/`, `scripts/`, `test/`, and `test-d/` siblings type-check under the same `bun run typecheck` invocation.
 
 ## Context
 

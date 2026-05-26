@@ -38,8 +38,8 @@ Bulleted: build green, lint green, tests green, docs updated, etc.
 | --------- | ---- | ------ |
 | [types-api-coverage--vmath-api-doc-parser.md](types-api-coverage--vmath-api-doc-parser.md) | types-api-coverage | shipped |
 | [types-api-coverage--vmath-dts-emitter.md](types-api-coverage--vmath-dts-emitter.md) | types-api-coverage | shipped |
-| [types-api-coverage--vmath-package-publish.md](types-api-coverage--vmath-package-publish.md) | types-api-coverage | planned |
+| [types-api-coverage--vmath-package-publish.md](types-api-coverage--vmath-package-publish.md) | types-api-coverage | shipped |
 
 ## What next
 
-[types-api-coverage--vmath-package-publish.md](types-api-coverage--vmath-package-publish.md) — wire the emitter output into the published `@defold-ts/types` surface so end-user `.ts` scripts see `vmath` as a typed ambient global.
+All steps complete.
