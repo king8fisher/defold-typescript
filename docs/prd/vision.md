@@ -32,11 +32,15 @@ Authoring Defold games in TypeScript should feel indistinguishable from authorin
 
 ### cli-scaffold
 - **Status**: planned
-- **Why**: New users need a one-command path from "I have Bun" to "my Defold project compiles TS to Lua on save."
+- **Why**: New users need a one-command path from "I have Bun" to "my Defold project compiles TS to Lua on save." Existing Defold projects need the same path without overwriting their `game.project`, collections, or scripts.
 - **What**:
-  - `bunx defold-ts init <project>` scaffolds a starter Defold project with TS sources, types, and build config
-  - `defold-ts build` and `defold-ts watch` commands
-  - Works on macOS, Linux, Windows
+  - `bunx defold-ts init [path]` decides between two modes based on what already exists at `path`:
+    - **Scaffold a new project** when `path` is empty or missing — writes `game.project`, a starter collection, a sample `.script`, and the TS sources/types/build config.
+    - **Add TS support to an existing project** when `game.project` (or other Defold project files) is detected — only writes the TypeScript surface (`src/`, `tsconfig.json`, `package.json` entries, `@defold-ts/types`, build config) and leaves existing Defold assets untouched.
+  - Detection rule: presence of `game.project` at `path` (and absence of conflicting TS config) is the signal for "existing project." Document the rule so agents can reproduce the decision.
+  - Conflict handling: if TS config already exists (`tsconfig.json`, `defold-ts.config.*`), abort with a clear message and a `--force` opt-in. Never silently overwrite user files.
+  - `defold-ts build` and `defold-ts watch` work identically in both modes once init has run.
+  - Works on macOS, Linux, Windows.
 - **Depends on**: transpiler-pipeline
 - **Impl**: (none yet)
 
