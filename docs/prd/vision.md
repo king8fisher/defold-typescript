@@ -20,6 +20,7 @@ Authoring Defold games in TypeScript should feel indistinguishable from authorin
   - [types-api-coverage--vmath-dts-emitter.md](../impl/types-api-coverage--vmath-dts-emitter.md) — second slice: emit a TypeScript `declare namespace vmath { … }` string from the parsed `ApiModule`, with a hand-curated Defold→TS type mapping for `vector3`/`vector4`/`quat`/`matrix4`
   - [types-api-coverage--vmath-package-publish.md](../impl/types-api-coverage--vmath-package-publish.md) — third slice: publish the emitter output through the `@defold-ts/types` package so end-user `.ts` scripts see `vmath` as a typed ambient global (regen script + committed generated `.d.ts` + consumer type-level proof)
   - [types-api-coverage--msg-module-fanout.md](../impl/types-api-coverage--msg-module-fanout.md) — fourth slice: generalise the regen pipeline to a `MODULE_MANIFEST` and prove multi-module fan-out with `msg` (vendored `msg_doc.json` + committed `generated/msg.d.ts` + consumer proof + manifest-driven drift-guard)
+  - [types-api-coverage--go-module-fanout.md](../impl/types-api-coverage--go-module-fanout.md) — fifth slice: add the `go` (game object) namespace through the same `MODULE_MANIFEST` seam, exercising cross-module type refs (`vector3`, `quaternion`, `hash`, `url`) on a real, broadly-used Defold surface
 
 ### transpiler-pipeline
 - **Status**: planned
