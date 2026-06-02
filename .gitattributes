@@ -1,0 +1,5 @@
+# Normalize all text to LF in the working tree on every platform. The
+# generated *.d.ts fixtures are committed with LF and the regen pipeline emits
+# LF; without this, Windows checks them out as CRLF and the byte-for-byte regen
+# drift guard fails. text=auto leaves detected-binary files untouched.
+* text=auto eol=lf
