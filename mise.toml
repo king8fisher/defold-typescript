@@ -22,22 +22,9 @@ description = "Advisory packed-install release smoke (network-touching, not a CI
 run = "bun scripts/release-smoke.ts"
 
 [tasks.publish]
-description = "Coordinated local npm publish. Usage: mise run publish [<version>|patch|minor|major] [--publish] (dry-run without --publish)"
+description = "Coordinated local npm publish (tags v<version> on success). Usage: mise run publish [<version>|patch|minor|major] [--publish] (dry-run without --publish)"
 run = "bun scripts/publish.ts"
 
 [tasks.release]
-description = "Tag a published release. Usage: mise run release 1.0.0 (run `mise run publish <version> --publish` first)"
-run = """
-#!/usr/bin/env bash
-set -e
-VERSION="$1"
-if [ -z "$VERSION" ]; then
-  echo "Usage: mise run release <version>"
-  echo "Example: mise run release 1.0.0"
-  exit 1
-fi
-echo "Tagging v$VERSION..."
-git tag -a "v$VERSION" -m "Release v$VERSION"
-git push origin "v$VERSION"
-echo "Pushed tag v$VERSION. (release.yml is parked; npm publish is local via mise run publish.)"
-"""
+description = "Fallback: manually tag a version already published by `mise run publish`. Usage: mise run release <version>"
+run = "bun scripts/release.ts"

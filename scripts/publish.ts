@@ -5,8 +5,9 @@
 // script bumps all four manifests to the target version, REGENERATES the
 // lockfile (`bun install`) so the snapshot carries the stamped versions, packs
 // to verify the inter-package deps resolved to concrete coordinated versions,
-// then publishes types -> transpiler -> cli in dependency order. The working
-// tree is always restored to its committed 0.0.0 state afterward.
+// then publishes types -> transpiler -> cli in dependency order. On a
+// successful --publish it tags and pushes v<version> (non-fatal — the packages
+// are already live). The working tree is always restored to 0.0.0 afterward.
 //
 // Regenerating the lockfile is the step the parked `release.yml` omitted: `bun
 // pm pack` rewrites `workspace:*` from the lockfile snapshot, so a stale 0.0.0
@@ -41,15 +42,47 @@ export type Bump = "patch" | "minor" | "major";
 export interface Args {
   readonly spec: string;
   readonly doPublish: boolean;
+  readonly help: boolean;
 }
+
+export const HELP = `Coordinated local npm publish for the three @defold-typescript packages.
+
+Usage:
+  mise run publish [<version>|patch|minor|major] [--publish]
+  bun scripts/publish.ts [<version>|patch|minor|major] [--publish]
+
+Bumps every workspace manifest to one coordinated version, regenerates the
+lockfile so packed inter-package deps resolve to that version, runs the full
+gate, then publishes types -> transpiler -> cli. On a successful --publish it
+also tags and pushes v<version>. The working tree is restored to its committed
+0.0.0 state afterward. Dry-run by default.
+
+Arguments:
+  patch | minor | major   bump from the highest published version (default: patch)
+  <x.y.z>                  explicit version; must be greater than current
+
+Flags:
+  --publish               cut a real release (bun prompts for the npm OTP under 2FA)
+  -h, --help              show this help
+
+Examples:
+  mise run publish                    # dry-run a patch bump
+  mise run publish minor              # dry-run, e.g. 0.1.0 -> 0.2.0
+  mise run publish minor --publish    # publish 0.2.0 and push tag v0.2.0
+  mise run publish 0.3.0 --publish    # publish an explicit version
+  mise run current-version            # show what is live on npm now
+  mise run release 0.2.0              # fallback: tag a version published earlier`;
 
 export function parseArgs(argv: readonly string[]): Args {
   const positional: string[] = [];
   let doPublish = false;
+  let help = false;
   for (const arg of argv) {
-    if (arg === "--publish") {
+    if (arg === "--help" || arg === "-h") {
+      help = true;
+    } else if (arg === "--publish") {
       doPublish = true;
-    } else if (arg.startsWith("--")) {
+    } else if (arg.startsWith("-")) {
       throw new Error(`unknown flag: ${arg}`);
     } else {
       positional.push(arg);
@@ -58,18 +91,13 @@ export function parseArgs(argv: readonly string[]): Args {
   if (positional.length > 1) {
     throw new Error(`expected one version/bump argument, got: ${positional.join(", ")}`);
   }
-  return { spec: positional[0] ?? "patch", doPublish };
+  return { spec: positional[0] ?? "patch", doPublish, help };
 }
 
 export function compareVersions(a: string, b: string): number {
-  const pa = parseSemver(a);
-  const pb = parseSemver(b);
-  for (let i = 0; i < 3; i++) {
-    if (pa[i] !== pb[i]) {
-      return pa[i] - pb[i];
-    }
-  }
-  return 0;
+  const [aMajor, aMinor, aPatch] = parseSemver(a);
+  const [bMajor, bMinor, bPatch] = parseSemver(b);
+  return aMajor - bMajor || aMinor - bMinor || aPatch - bPatch;
 }
 
 export function maxVersion(versions: readonly string[]): string {
@@ -110,7 +138,11 @@ function run(
   cmd: string[],
   opts: { cwd?: string; inherit?: boolean } = {},
 ): { code: number; output: string } {
-  const proc = spawnSync(cmd[0], cmd.slice(1), {
+  const [bin, ...rest] = cmd;
+  if (!bin) {
+    throw new Error("run() called with an empty command");
+  }
+  const proc = spawnSync(bin, rest, {
     cwd: opts.cwd ?? REPO_ROOT,
     stdio: opts.inherit ? "inherit" : "pipe",
     encoding: "utf8",
@@ -142,6 +174,26 @@ function stamp(version: string): void {
 
 function restoreTree(): void {
   run(["git", "checkout", "--", ...MANIFESTS, "bun.lock"]);
+}
+
+// Tag the release after a fully-successful real publish. Non-fatal: the
+// packages are already on npm, so a tag/push hiccup must not read as a failed
+// publish — it just leaves the manual `mise run release <version>` fallback.
+function tagRelease(version: string): void {
+  const tag = `v${version}`;
+  if (run(["git", "tag", "-a", tag, "-m", `Release ${tag}`], { inherit: true }).code !== 0) {
+    process.stderr.write(
+      `\nwarning: could not create tag ${tag} (already exists?). Tag manually: mise run release ${version}\n`,
+    );
+    return;
+  }
+  if (run(["git", "push", "origin", tag], { inherit: true }).code !== 0) {
+    process.stderr.write(
+      `\nwarning: created ${tag} locally but the push failed. Push manually: git push origin ${tag}\n`,
+    );
+    return;
+  }
+  process.stdout.write(`\ntagged and pushed ${tag}\n`);
 }
 
 function verifyCoordinated(version: string): void {
@@ -188,7 +240,13 @@ async function main(): Promise<void> {
   try {
     args = parseArgs(process.argv.slice(2));
   } catch (err) {
-    die((err as Error).message);
+    process.stderr.write(`publish: ${(err as Error).message}\n\n${HELP}\n`);
+    process.exit(1);
+  }
+
+  if (args.help) {
+    process.stdout.write(`${HELP}\n`);
+    return;
   }
 
   if (run(["git", "status", "--porcelain"]).output.trim() !== "") {
@@ -244,9 +302,8 @@ async function main(): Promise<void> {
   }
 
   if (args.doPublish) {
-    process.stdout.write(
-      `\npublished ${target}. Tag the release commit: mise run release ${target}\n`,
-    );
+    process.stdout.write(`\npublished ${target}\n`);
+    tagRelease(target);
   } else {
     process.stdout.write(`\ndry-run complete. Re-run with --publish to cut ${target} for real.\n`);
   }

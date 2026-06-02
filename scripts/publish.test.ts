@@ -3,12 +3,26 @@ import { bumpVersion, compareVersions, maxVersion, parseArgs, resolveTarget } fr
 
 describe("parseArgs", () => {
   test("defaults to a dry-run patch bump", () => {
-    expect(parseArgs([])).toEqual({ spec: "patch", doPublish: false });
+    expect(parseArgs([])).toEqual({ spec: "patch", doPublish: false, help: false });
   });
 
   test("reads a bump keyword and the --publish flag in any order", () => {
-    expect(parseArgs(["minor", "--publish"])).toEqual({ spec: "minor", doPublish: true });
-    expect(parseArgs(["--publish", "0.3.0"])).toEqual({ spec: "0.3.0", doPublish: true });
+    expect(parseArgs(["minor", "--publish"])).toEqual({
+      spec: "minor",
+      doPublish: true,
+      help: false,
+    });
+    expect(parseArgs(["--publish", "0.3.0"])).toEqual({
+      spec: "0.3.0",
+      doPublish: true,
+      help: false,
+    });
+  });
+
+  test("recognizes --help and -h", () => {
+    expect(parseArgs(["--help"]).help).toBe(true);
+    expect(parseArgs(["-h"]).help).toBe(true);
+    expect(parseArgs([]).help).toBe(false);
   });
 
   test("rejects unknown flags and extra positionals", () => {
