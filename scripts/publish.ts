@@ -3,15 +3,17 @@
 // The repo's manifests and lockfile stay pinned at 0.0.0 with `workspace:*`
 // inter-package deps for the dev loop. Publishing is a transient stamp: this
 // script bumps all four manifests to the target version, REGENERATES the
-// lockfile (`bun install`) so the snapshot carries the stamped versions, packs
-// to verify the inter-package deps resolved to concrete coordinated versions,
-// then publishes types -> transpiler -> cli in dependency order. On a
-// successful --publish it tags and pushes v<version> (non-fatal — the packages
-// are already live). The working tree is always restored to 0.0.0 afterward.
+// lockfile (delete bun.lock + `bun install`) so the snapshot carries the
+// stamped versions, packs to verify the inter-package deps resolved to concrete
+// coordinated versions, then publishes types -> transpiler -> cli in dependency
+// order. On a successful --publish it tags and pushes v<version> (non-fatal —
+// the packages are already live). The working tree is always restored to 0.0.0
+// afterward (including on failure and Ctrl-C).
 //
-// Regenerating the lockfile is the step the parked `release.yml` omitted: `bun
-// pm pack` rewrites `workspace:*` from the lockfile snapshot, so a stale 0.0.0
-// lockfile would ship deps pointing at a nonexistent 0.0.0.
+// Regenerating the lockfile is the step the parked `release.yml` omitted, and a
+// plain `bun install` is NOT enough: `bun pm pack` rewrites `workspace:*` from
+// the lockfile snapshot, which a non-destructive install leaves at 0.0.0. The
+// lockfile must be deleted so the install re-resolves at the stamped version.
 //
 // Usage:
 //   bun scripts/publish.ts [<version>|patch|minor|major] [--publish]
@@ -203,29 +205,29 @@ function verifyCoordinated(version: string): void {
       const pkgDir = path.join(REPO_ROOT, "packages", pkg);
       const pack = run(["bun", "pm", "pack", "--destination", tmp], { cwd: pkgDir });
       if (pack.code !== 0) {
-        die(`pack failed for ${pkg}:\n${pack.output}`);
+        throw new Error(`pack failed for ${pkg}:\n${pack.output}`);
       }
       const tgz = pack.output
         .split("\n")
         .map((l) => l.trim())
         .find((l) => l.endsWith(".tgz"));
       if (!tgz) {
-        die(`could not locate packed tarball for ${pkg}:\n${pack.output}`);
+        throw new Error(`could not locate packed tarball for ${pkg}:\n${pack.output}`);
       }
       const tarballPath = path.isAbsolute(tgz) ? tgz : path.join(pkgDir, tgz);
       const extract = run(["tar", "-xzOf", tarballPath, "package/package.json"]);
       if (extract.code !== 0) {
-        die(`could not read manifest from ${pkg} tarball:\n${extract.output}`);
+        throw new Error(`could not read manifest from ${pkg} tarball:\n${extract.output}`);
       }
       const manifest = JSON.parse(extract.output);
       const deps: Record<string, string> = manifest.dependencies ?? {};
       for (const [name, spec] of Object.entries(deps)) {
         if (!name.startsWith("@defold-typescript/")) continue;
         if (spec.startsWith("workspace:")) {
-          die(`${pkg} tarball still carries an unresolved ${name}: ${spec}`);
+          throw new Error(`${pkg} tarball still carries an unresolved ${name}: ${spec}`);
         }
         if (spec !== version) {
-          die(`${pkg} tarball depends on ${name}@${spec}, expected ${version}`);
+          throw new Error(`${pkg} tarball depends on ${name}@${spec}, expected ${version}`);
         }
       }
     }
@@ -273,11 +275,34 @@ async function main(): Promise<void> {
     }
   }
 
+  // From here the tree is mutated (stamped manifests + regenerated lockfile),
+  // so every failure path must restore before exiting. die() calls
+  // process.exit(), which skips `finally` — so throw inside, capture, restore
+  // in `finally`, and only die() after the tree is clean again.
+  let failure: Error | null = null;
+  // Ctrl-C during the stamped window kills the process before `finally` runs,
+  // so restore on the signal too before exiting.
+  let treeDirty = false;
+  const restoreOnSignal = () => {
+    if (treeDirty) {
+      restoreTree();
+      process.stderr.write("\ninterrupted — restored working tree\n");
+    }
+    process.exit(130);
+  };
+  process.once("SIGINT", restoreOnSignal);
+  process.once("SIGTERM", restoreOnSignal);
   try {
     stamp(target);
+    treeDirty = true;
+    // A plain `bun install` leaves the lockfile's workspace version mapping at
+    // the committed 0.0.0, so `bun pm pack` would rewrite workspace:* to 0.0.0.
+    // Deleting the lockfile first forces a full re-resolution at the stamped
+    // version. This is the step the parked release.yml omitted.
     process.stdout.write(`\nstamped manifests to ${target}; regenerating lockfile\n`);
+    rmSync(path.join(REPO_ROOT, "bun.lock"), { force: true });
     if (run(["bun", "install"], { inherit: true }).code !== 0) {
-      die("`bun install` failed while regenerating the lockfile");
+      throw new Error("`bun install` failed while regenerating the lockfile");
     }
     verifyCoordinated(target);
 
@@ -293,12 +318,21 @@ async function main(): Promise<void> {
         inherit: true,
       }).code;
       if (code !== 0) {
-        die(`publish failed for ${pkg}; remaining packages NOT published`);
+        throw new Error(`publish failed for ${pkg}; remaining packages NOT published`);
       }
     }
+  } catch (err) {
+    failure = err as Error;
   } finally {
     restoreTree();
+    treeDirty = false;
     process.stdout.write("\nrestored working tree to the committed 0.0.0 state\n");
+  }
+  process.removeListener("SIGINT", restoreOnSignal);
+  process.removeListener("SIGTERM", restoreOnSignal);
+
+  if (failure) {
+    die(failure.message);
   }
 
   if (args.doPublish) {
