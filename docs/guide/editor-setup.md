@@ -24,7 +24,7 @@ Edit TypeScript under `src/`. Treat the generated `.lua` and `.lua.map` files ne
 Keep Defold open on the same project folder. In the editor's integrated terminal, run:
 
 ```sh
-bunx defold-typescript watch
+bunx @defold-typescript/cli watch
 ```
 
 `defold-typescript watch` rebuilds Lua when files under `src/` change. Run the game from the Defold editor after the rebuild completes.

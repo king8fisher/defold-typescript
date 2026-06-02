@@ -17,9 +17,9 @@ describe("lifecycle erasure", () => {
     expect(result.lua).toMatchInlineSnapshot(`
       "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
       local ____exports = {}
-      function init(self)
+      function init(____self)
       end
-      function update(self, dt)
+      function update(____self, dt)
       end
       return ____exports
       "
@@ -44,14 +44,43 @@ describe("lifecycle erasure", () => {
     expect(result.lua).toMatchInlineSnapshot(`
       "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
       local ____exports = {}
-      function on_message(self, message_id, message, sender)
+      function on_message(____self, message_id, message, sender)
           msg.post("main:/hero", "pong", {})
       end
       return ____exports
       "
     `);
-    expect(result.lua).toContain("function on_message(self, message_id, message, sender)");
+    expect(result.lua).toContain("function on_message(____self, message_id, message, sender)");
     expect(result.lua).not.toContain("defineScript");
+  });
+
+  test("renames the self param consistently in body and signature", () => {
+    const source = [
+      'import { defineScript } from "@defold-typescript/types";',
+      "",
+      "defineScript<{ speed: number }>({",
+      "  init(self) { self.speed = 120; },",
+      "  update(self, dt) { self.speed += dt; },",
+      "});",
+      "",
+    ].join("\n");
+    const result = transpile(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.lua).toMatchInlineSnapshot(`
+      "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+      local ____exports = {}
+      function init(____self)
+          ____self.speed = 120
+      end
+      function update(____self, dt)
+          ____self.speed = ____self.speed + dt
+      end
+      return ____exports
+      "
+    `);
+    // TSTL escapes the reserved name `self` to `____self`; the signature param
+    // must match the body references so the emitted Lua has no undefined symbol.
+    expect(result.lua).not.toContain("function init(self)");
   });
 
   test("erases defineRenderScript identically", () => {
@@ -69,9 +98,9 @@ describe("lifecycle erasure", () => {
     expect(result.lua).toMatchInlineSnapshot(`
       "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
       local ____exports = {}
-      function init(self)
+      function init(____self)
       end
-      function update(self, dt)
+      function update(____self, dt)
       end
       return ____exports
       "
@@ -95,9 +124,9 @@ describe("lifecycle erasure", () => {
     expect(result.lua).toMatchInlineSnapshot(`
       "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
       local ____exports = {}
-      function init(self)
+      function init(____self)
       end
-      function update(self, dt)
+      function update(____self, dt)
       end
       return ____exports
       "
@@ -120,7 +149,7 @@ describe("lifecycle erasure", () => {
     expect(result.lua).toMatchInlineSnapshot(`
       "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
       local ____exports = {}
-      function init(self)
+      function init(____self)
       end
       return ____exports
       "

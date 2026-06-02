@@ -98,7 +98,7 @@ function eraseFactoryCall(
     }
     const params: Identifier[] = fn.parameters
       .filter((param) => !isThisParameter(param) && ts.isIdentifier(param.name))
-      .map((param) => createIdentifier((param.name as ts.Identifier).text, param));
+      .map((param) => context.transformExpression(param.name as ts.Identifier) as Identifier);
     const fnExpression = createFunctionExpression(
       createBlock(transformHookBody(fn, context)),
       params,

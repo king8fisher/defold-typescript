@@ -4,8 +4,12 @@ Use `defold-typescript init` inside a Defold project that already has `game.proj
 
 ```sh
 cd my-existing-defold-game
-bunx defold-typescript init
+bunx @defold-typescript/cli init
 ```
+
+The package is scoped — run it as `@defold-typescript/cli`. The bare
+`bunx defold-typescript` resolves a nonexistent unscoped package and 404s unless
+you have already installed `@defold-typescript/cli` locally.
 
 When `game.project` exists, `init` does not synthesize a new Defold project. It only writes the TypeScript surface:
 
@@ -15,8 +19,8 @@ When `game.project` exists, `init` does not synthesize a new Defold project. It 
 
 If `package.json` already exists, the command preserves its existing fields and merges these dev dependencies when they are missing:
 
-- `@defold-typescript/transpiler`
-- `@defold-typescript/types`
+- `@defold-typescript/types` — pinned to the CLI's own published version (the packages release in lockstep). This is the only `@defold-typescript/*` package your project needs; it is type-only and feeds the editor. The transpiler is a dependency of the CLI itself, pulled in when you run `build`/`watch`, so the scaffold does not add it.
+- `@biomejs/biome`
 
 If `package.json` does not exist, the command creates one.
 
@@ -38,7 +42,7 @@ Pass `--force` to overwrite a conflicting TS config (in new-project mode, `--for
 After initialization, write TypeScript under `src/` and run:
 
 ```sh
-bunx defold-typescript build
+bunx @defold-typescript/cli build
 ```
 
 The default `tsconfig.json` type-checks against `@defold-typescript/types` and writes Lua next to each `.ts` source (`src/main.ts` -> `src/main.lua`). The scaffold also drops a `.gitignore` so the generated `.lua`/`.lua.map` files stay out of version control. Set a concrete `outDir` to collect Lua under a separate tree instead.

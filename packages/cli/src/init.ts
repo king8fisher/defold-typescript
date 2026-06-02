@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { CURRENT_STABLE_DEFOLD_VERSION } from "./defold-version";
 import {
   detectScriptKinds,
@@ -103,9 +104,27 @@ interface PackageJson {
   [key: string]: unknown;
 }
 
+function typesVersionSpec(): string {
+  try {
+    // Anchor on the module URL, not `import.meta.dir` — the latter is a
+    // Bun-only property and is undefined when the bundled CLI runs under node
+    // (the `npx` path), which would silently fall back to "latest".
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(readFileSync(path.join(here, "..", "package.json"), "utf8")) as {
+      version?: string;
+    };
+    return pkg.version ? `^${pkg.version}` : "latest";
+  } catch {
+    return "latest";
+  }
+}
+
+// Only @defold-typescript/types ships into the consumer (type-only, for the
+// editor). The transpiler is a dependency of the CLI itself, pulled in when the
+// user runs `build`/`watch`; the scaffold must not duplicate it. Pin types to
+// this CLI's own version so the coordinated-release set stays in lockstep.
 const SCAFFOLD_DEV_DEPS: Record<string, string> = {
-  "@defold-typescript/transpiler": "workspace:*",
-  "@defold-typescript/types": "workspace:*",
+  "@defold-typescript/types": typesVersionSpec(),
   "@biomejs/biome": "^2.2.0",
 };
 

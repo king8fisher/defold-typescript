@@ -13,6 +13,13 @@ import * as path from "node:path";
 import { CURRENT_STABLE_DEFOLD_VERSION } from "./defold-version";
 import { runInit } from "./init";
 
+const CLI_VERSION = (
+  JSON.parse(readFileSync(path.join(import.meta.dir, "..", "package.json"), "utf8")) as {
+    version: string;
+  }
+).version;
+const TYPES_SPEC = `^${CLI_VERSION}`;
+
 let cwd: string;
 
 beforeEach(() => {
@@ -99,10 +106,20 @@ describe("runInit (add-TS mode)", () => {
     expect(merged.keywords).toEqual(["defold"]);
     expect(merged.devDependencies).toEqual({
       "some-other-dep": "^1.0.0",
-      "@defold-typescript/transpiler": "workspace:*",
-      "@defold-typescript/types": "workspace:*",
+      "@defold-typescript/types": TYPES_SPEC,
       "@biomejs/biome": "^2.2.0",
     });
+  });
+
+  test("pins @defold-typescript/types to the published CLI version and omits the transpiler", () => {
+    touch("game.project", "[project]\n");
+
+    runInit({ cwd });
+
+    const pkg = JSON.parse(readFileSync(path.join(cwd, "package.json"), "utf8"));
+    expect(pkg.devDependencies["@defold-typescript/types"]).toBe(TYPES_SPEC);
+    expect(pkg.devDependencies["@defold-typescript/types"]).not.toBe("workspace:*");
+    expect(pkg.devDependencies["@defold-typescript/transpiler"]).toBeUndefined();
   });
 
   test("seeds the defold-version pin with current-stable in a fresh package.json", () => {

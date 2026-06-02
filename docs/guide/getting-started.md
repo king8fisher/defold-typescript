@@ -12,19 +12,28 @@ bun --version
 
 You need Bun `>= 1.3`.
 
-## Install the CLI
+## Run the CLI
+
+The package is scoped, so run it through `bunx` by its full name — no install required:
 
 ```sh
-bun add -d @defold-typescript/cli
+bunx @defold-typescript/cli init
 ```
 
-The package exposes a single binary, `defold-typescript`.
+`bunx defold-typescript` (without the `@defold-typescript/` scope) resolves a
+different, nonexistent package and fails with a registry 404. If you prefer the
+short `defold-typescript` name, install the package first so the binary lands in
+`node_modules/.bin`:
+
+```sh
+bun add -d @defold-typescript/cli   # then: bunx defold-typescript <command>
+```
 
 ## Scaffold a project
 
 ```sh
 mkdir my-game && cd my-game
-bunx defold-typescript init
+bunx @defold-typescript/cli init
 ```
 
 `init` writes a minimal Defold project (`game.project`, `main/main.collection`, `main/main.script`) alongside a TypeScript surface (`src/main.ts`, `tsconfig.json`, `package.json`). The Defold files are real engine inputs; the TypeScript files are what you edit.
@@ -49,7 +58,7 @@ function init(this: unknown): void {
 ## Build to Lua
 
 ```sh
-bunx defold-typescript build
+bunx @defold-typescript/cli build
 ```
 
 The build command transpiles every TypeScript file under `src/` to Lua and writes the output into the Defold project tree. Open the project in the [Defold editor](./defold-editor.md) (or run it from the command line) to play it.
@@ -57,7 +66,7 @@ The build command transpiles every TypeScript file under `src/` to Lua and write
 ## Iterate
 
 ```sh
-bunx defold-typescript watch
+bunx @defold-typescript/cli watch
 ```
 
 `watch` rebuilds incrementally on every TypeScript source change: it holds one long-lived transpile session and re-reads and rewrites only the files you actually edited, skipping the re-glob and re-read of unchanged sources. Use it while the Defold editor is open in the same project directory. See [code editor setup](./editor-setup.md) for the VSCode and integrated-terminal loop.
