@@ -24,4 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
+      # Build first: publish-pack / release-bin-smoke tests build the cli, which
+      # resolves @defold-typescript/transpiler through its built dist/. A clean
+      # checkout has no dist, so test-without-build cannot resolve it.
+      - run: bun run build
       - run: bun test

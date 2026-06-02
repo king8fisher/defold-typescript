@@ -59,6 +59,17 @@ describe("ci workflow", () => {
     expect(runs.some((cmd) => cmd.includes("bun run typecheck"))).toBe(true);
   });
 
+  test("test job builds before it tests so cross-package dist resolves", () => {
+    const wf = loadWorkflow();
+    const jobs = wf.jobs as Record<string, { steps?: Array<{ run?: string }> }>;
+    const runs = (jobs.test?.steps ?? []).map((step) => step.run ?? "");
+    const buildAt = runs.findIndex((cmd) => cmd.includes("bun run build"));
+    const testAt = runs.findIndex((cmd) => cmd.includes("bun test"));
+    expect(buildAt).toBeGreaterThanOrEqual(0);
+    expect(testAt).toBeGreaterThanOrEqual(0);
+    expect(buildAt).toBeLessThan(testAt);
+  });
+
   test("every install pins the lockfile so the toolchain cannot drift", () => {
     const wf = loadWorkflow();
     const jobs = wf.jobs as Record<string, { steps?: Array<{ run?: string }> }>;

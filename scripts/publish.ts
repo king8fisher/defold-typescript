@@ -268,7 +268,9 @@ async function main(): Promise<void> {
   process.stdout.write(`target version:    ${target}\n`);
   process.stdout.write(`mode:              ${args.doPublish ? "PUBLISH (real)" : "dry-run"}\n\n`);
 
-  for (const step of ["typecheck", "lint", "test", "build"]) {
+  // build before test: the publish-pack / release-bin-smoke tests build the
+  // cli, which resolves the transpiler through its built dist/.
+  for (const step of ["typecheck", "lint", "build", "test"]) {
     process.stdout.write(`gate: bun run ${step}\n`);
     if (run(["bun", "run", step], { inherit: true }).code !== 0) {
       die(`gate failed at \`bun run ${step}\``);
