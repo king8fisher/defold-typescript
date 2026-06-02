@@ -36,7 +36,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "regen": "bun scripts/regen.ts",
     "sync-api-docs": "bun scripts/sync-api-docs.ts"
