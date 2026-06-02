@@ -11,14 +11,14 @@
   "scripts": {
     "build": "bun run --filter '*' build",
     "test": "bun test",
-    "lint": "biome check .",
+    "lint": "biome check --error-on-warnings .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "bun run --filter '*' typecheck",
     "smoke": "bun scripts/release-smoke.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
+    "@biomejs/biome": "^2.4.16",
     "@types/bun": "latest",
     "typescript": "6.0.2",
     "yaml": "^2.9.0"

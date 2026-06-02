@@ -48,4 +48,34 @@ describe("ci workflow", () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: literal workflow value under assertion
     expect(jobs.test?.["runs-on"]).toBe("${{ matrix.os }}");
   });
+
+  test("a job runs lint and typecheck so they gate every push", () => {
+    const wf = loadWorkflow();
+    const jobs = wf.jobs as Record<string, { steps?: Array<{ run?: string }> }>;
+    const runs = Object.values(jobs)
+      .flatMap((job) => job.steps ?? [])
+      .map((step) => step.run ?? "");
+    expect(runs.some((cmd) => cmd.includes("bun run lint"))).toBe(true);
+    expect(runs.some((cmd) => cmd.includes("bun run typecheck"))).toBe(true);
+  });
+
+  test("every install pins the lockfile so the toolchain cannot drift", () => {
+    const wf = loadWorkflow();
+    const jobs = wf.jobs as Record<string, { steps?: Array<{ run?: string }> }>;
+    const installs = Object.values(jobs)
+      .flatMap((job) => job.steps ?? [])
+      .map((step) => step.run ?? "")
+      .filter((cmd) => cmd.includes("bun install"));
+    expect(installs.length).toBeGreaterThan(0);
+    for (const cmd of installs) {
+      expect(cmd).toContain("--frozen-lockfile");
+    }
+  });
+});
+
+describe("lint gate", () => {
+  test("the lint script fails on warnings, not only errors", async () => {
+    const manifest = await Bun.file(join(import.meta.dir, "..", "package.json")).json();
+    expect(manifest.scripts.lint).toContain("--error-on-warnings");
+  });
 });

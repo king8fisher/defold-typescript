@@ -198,7 +198,7 @@ export async function materializeRefDocSurface(
   }
   const registry = opts.registry ?? loadApiTargetsRegistry();
   const target = registry.find((t) => t.id === surfaceId);
-  if (!target || target.source?.kind !== "ref-doc") {
+  if (target?.source?.kind !== "ref-doc") {
     return { materializedDir: null, active: null };
   }
   const excludeModules = [...excludedModulesForKind(opts.scriptKind ?? null)];
