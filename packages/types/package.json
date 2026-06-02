@@ -1,0 +1,46 @@
+{
+  "name": "@defold-typescript/types",
+  "version": "0.0.0",
+  "description": "TypeScript types for the Defold engine's Lua APIs.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./script": {
+      "types": "./generated/kinds/script.d.ts"
+    },
+    "./gui-script": {
+      "types": "./generated/kinds/gui-script.d.ts"
+    },
+    "./render-script": {
+      "types": "./generated/kinds/render-script.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "generated",
+    "scripts",
+    "api-targets.json",
+    "index.d.ts",
+    "!src/**/*.test.ts",
+    "!scripts/**/*.test.ts",
+    "!src/**/__snapshots__"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "regen": "bun scripts/regen.ts",
+    "sync-api-docs": "bun scripts/sync-api-docs.ts"
+  },
+  "devDependencies": {
+    "@typescript-to-lua/language-extensions": "1.19.0"
+  }
+}

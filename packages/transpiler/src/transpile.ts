@@ -1,0 +1,124 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import * as path from "node:path";
+import type * as ts from "typescript";
+import * as tstl from "typescript-to-lua";
+import { lifecycleErasurePlugin } from "./lifecycle-erasure";
+
+export interface TranspileResult {
+  readonly lua: string;
+  readonly sourceMap: string;
+  readonly diagnostics: readonly string[];
+}
+
+export interface TranspileDiagnostic {
+  readonly file?: string;
+  readonly message: string;
+}
+
+export interface TranspileProjectInput {
+  readonly files: Readonly<Record<string, string>>;
+}
+
+export interface TranspileProjectResult {
+  readonly lua: Readonly<Record<string, string>>;
+  readonly sourceMaps: Readonly<Record<string, string>>;
+  readonly diagnostics: readonly TranspileDiagnostic[];
+}
+
+function flattenDiagnosticMessage(
+  text: string | { messageText: string | { messageText: string } },
+): string {
+  if (typeof text === "string") {
+    return text;
+  }
+  return flattenDiagnosticMessage(text.messageText);
+}
+
+const requireFromHere = createRequire(import.meta.url);
+const TYPES_PKG_ROOT = path.dirname(
+  requireFromHere.resolve("@defold-typescript/types/package.json"),
+);
+const TSTL_LANG_EXT_ROOT = path.dirname(
+  requireFromHere.resolve("@typescript-to-lua/language-extensions/package.json"),
+);
+
+function readAmbient(rel: string): string {
+  return readFileSync(path.join(TYPES_PKG_ROOT, rel), "utf8");
+}
+
+export const AMBIENT_FILES: Readonly<Record<string, string>> = {
+  "node_modules/@typescript-to-lua/language-extensions/index.d.ts": readFileSync(
+    path.join(TSTL_LANG_EXT_ROOT, "index.d.ts"),
+    "utf8",
+  ),
+  "node_modules/@defold-typescript/types/generated/vmath.d.ts": readAmbient("generated/vmath.d.ts"),
+  "node_modules/@defold-typescript/types/generated/msg.d.ts": readAmbient("generated/msg.d.ts"),
+  "node_modules/@defold-typescript/types/generated/go.d.ts": readAmbient("generated/go.d.ts"),
+  "node_modules/@defold-typescript/types/generated/builtin-messages.d.ts": readAmbient(
+    "generated/builtin-messages.d.ts",
+  ),
+  "node_modules/@defold-typescript/types/src/core-types.ts": readAmbient("src/core-types.ts"),
+  "node_modules/@defold-typescript/types/src/msg-overloads.d.ts":
+    readAmbient("src/msg-overloads.d.ts"),
+  "node_modules/@defold-typescript/types/src/lifecycle.ts": readAmbient("src/lifecycle.ts"),
+  "node_modules/@defold-typescript/types/index.ts":
+    'export { defineGuiScript, defineRenderScript, defineScript } from "./src/lifecycle";\n',
+};
+
+interface CollectableFile {
+  readonly sourceFiles: readonly ts.SourceFile[];
+  readonly lua?: string;
+  readonly luaSourceMap?: string;
+}
+
+export function collectOutputs(
+  transpiledFiles: readonly CollectableFile[],
+  diagnostics: readonly ts.Diagnostic[],
+  userKeys: ReadonlySet<string>,
+): TranspileProjectResult {
+  const lua: Record<string, string> = {};
+  const sourceMaps: Record<string, string> = {};
+  for (const file of transpiledFiles) {
+    const userSource = file.sourceFiles.find((s) => userKeys.has(s.fileName));
+    if (!userSource || typeof file.lua !== "string") {
+      continue;
+    }
+    lua[userSource.fileName] = file.lua;
+    if (typeof file.luaSourceMap === "string") {
+      sourceMaps[userSource.fileName] = file.luaSourceMap;
+    }
+  }
+
+  const collectedDiagnostics: TranspileDiagnostic[] = diagnostics.map((d) => {
+    const fileName = d.file?.fileName;
+    const message = flattenDiagnosticMessage(d.messageText);
+    return fileName !== undefined && userKeys.has(fileName)
+      ? { file: fileName, message }
+      : { message };
+  });
+
+  return { lua, sourceMaps, diagnostics: collectedDiagnostics };
+}
+
+export function transpileProject(input: TranspileProjectInput): TranspileProjectResult {
+  const userKeys = new Set(Object.keys(input.files));
+  const merged: Record<string, string> = { ...AMBIENT_FILES, ...input.files };
+
+  const result = tstl.transpileVirtualProject(merged, {
+    luaTarget: tstl.LuaTarget.Lua54,
+    sourceMap: true,
+    luaPlugins: [{ plugin: lifecycleErasurePlugin }],
+  });
+
+  return collectOutputs(result.transpiledFiles, result.diagnostics, userKeys);
+}
+
+export function transpile(source: string): TranspileResult {
+  const project = transpileProject({ files: { "main.ts": source } });
+  return {
+    lua: project.lua["main.ts"] ?? "",
+    sourceMap: project.sourceMaps["main.ts"] ?? "",
+    diagnostics: project.diagnostics.map((d) => d.message),
+  };
+}

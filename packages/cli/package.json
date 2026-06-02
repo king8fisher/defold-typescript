@@ -1,0 +1,36 @@
+{
+  "name": "@defold-typescript/cli",
+  "version": "0.0.0",
+  "description": "End-user CLI for scaffolding and building Defold projects written in TypeScript.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "defold-typescript": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/__snapshots__"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rm -rf dist && bun build src/index.ts src/bin.ts --target=node --format=esm --packages=external --outdir=dist && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@defold-typescript/transpiler": "workspace:*",
+    "@defold-typescript/types": "workspace:*"
+  }
+}

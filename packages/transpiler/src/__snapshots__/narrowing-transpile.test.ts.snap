@@ -1,0 +1,36 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`narrowing transpile snapshots how TS narrowing constructs lower to Lua 1`] = `
+"local ____lualib = require("lualib_bundle")
+local __TS__TypeOf = ____lualib.__TS__TypeOf
+local ____exports = {}
+function ____exports.inspect(self, x)
+    local out = ""
+    if x then
+        out = "truthy"
+    end
+    if type(x) == "number" then
+        out = "number"
+    end
+    if type(x) == "string" then
+        out = "string"
+    end
+    if type(x) == "table" then
+        out = "object"
+    end
+    if type(x) == "nil" then
+        out = "undefined"
+    end
+    if x == nil then
+        out = "null"
+    end
+    if x == nil then
+        out = "undef"
+    end
+    local kind = __TS__TypeOf(x)
+    local n = x
+    return (out .. kind) .. tostring(n)
+end
+return ____exports
+"
+`;

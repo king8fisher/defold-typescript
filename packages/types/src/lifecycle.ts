@@ -1,0 +1,81 @@
+import type { Hash, Url } from "./core-types";
+
+type OnMessagePayload<K> = K extends BuiltinMessageId
+  ? BuiltinMessages[K]
+  : Record<string | number, unknown>;
+
+export interface InputTouch {
+  id?: number;
+  pressed?: boolean;
+  released?: boolean;
+  tap_count?: number;
+  x?: number;
+  y?: number;
+  dx?: number;
+  dy?: number;
+  acc_x?: number;
+  acc_y?: number;
+  acc_z?: number;
+}
+
+export interface InputAction {
+  value?: number;
+  pressed?: boolean;
+  released?: boolean;
+  repeated?: boolean;
+  x?: number;
+  y?: number;
+  screen_x?: number;
+  screen_y?: number;
+  dx?: number;
+  dy?: number;
+  screen_dx?: number;
+  screen_dy?: number;
+  gamepad?: number;
+  userid?: number;
+  gamepad_unknown?: boolean;
+  gamepad_name?: string;
+  gamepad_axis?: number[];
+  gamepadhats?: number[];
+  gamepad_buttons?: number[];
+  touch?: InputTouch[];
+  text?: string;
+  marked_text?: string;
+}
+
+export interface ScriptHooks<TSelf> {
+  init?(self: TSelf): void;
+  update?(self: TSelf, dt: number): void;
+  on_message?<K extends string>(
+    self: TSelf,
+    message_id: K,
+    message: OnMessagePayload<K>,
+    sender: Url,
+  ): void;
+  on_input?(
+    self: TSelf,
+    action_id: Hash | undefined,
+    action: InputAction,
+    // biome-ignore lint/suspicious/noConfusingVoidType: Defold lets handlers omit the return; `void` is the right shape for "may return boolean or nothing".
+  ): boolean | void;
+  final?(self: TSelf): void;
+  on_reload?(self: TSelf): void;
+}
+
+export type GuiScriptHooks<TSelf> = ScriptHooks<TSelf>;
+
+export type RenderScriptHooks<TSelf> = Omit<ScriptHooks<TSelf>, "on_input">;
+
+export function defineScript<TSelf>(hooks: ScriptHooks<TSelf>): ScriptHooks<TSelf> {
+  return hooks;
+}
+
+export function defineGuiScript<TSelf>(hooks: GuiScriptHooks<TSelf>): GuiScriptHooks<TSelf> {
+  return hooks;
+}
+
+export function defineRenderScript<TSelf>(
+  hooks: RenderScriptHooks<TSelf>,
+): RenderScriptHooks<TSelf> {
+  return hooks;
+}

@@ -1,0 +1,410 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import type { SelectedApiSurface } from "./api-surface";
+import {
+  ensureMaterializedReference,
+  materializeApiSurface,
+  materializeRefDocSurface,
+} from "./materialize";
+import {
+  labelRefDocResolveOpts,
+  multiKindRefDocResolveOpts,
+  multiKindRefDocTarget,
+} from "./ref-doc-test-fixture";
+
+function typecheck(tsconfigPath: string): { exitCode: number; output: string } {
+  const proc = Bun.spawnSync(["bunx", "tsc", "-p", tsconfigPath, "--noEmit"], {
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: 60_000,
+  });
+  return {
+    exitCode: proc.exitCode,
+    output: `${proc.stdout.toString()}${proc.stderr.toString()}`,
+  };
+}
+
+let cwd: string;
+let sourceDir: string;
+
+beforeEach(() => {
+  cwd = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-materialize-"));
+  sourceDir = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-generated-"));
+});
+
+afterEach(() => {
+  rmSync(cwd, { recursive: true, force: true });
+  rmSync(sourceDir, { recursive: true, force: true });
+});
+
+function seedSource(modules: string[]): void {
+  for (const mod of modules) {
+    writeFileSync(path.join(sourceDir, `${mod}.d.ts`), `declare const __${mod}: unknown;\n`);
+  }
+}
+
+const CURRENT: SelectedApiSurface = { surfaceId: "defold-1.12.4", available: true };
+const UNAVAILABLE: SelectedApiSurface = { surfaceId: null, available: false };
+
+describe("materializeApiSurface", () => {
+  test("copies every .d.ts and writes an aggregate index + faux package.json", () => {
+    seedSource(["label", "sprite"]);
+
+    const result = materializeApiSurface({ cwd, surface: CURRENT, sourceGeneratedDir: sourceDir });
+
+    expect(result).toEqual({
+      materializedDir: ".defold-types/defold-1.12.4",
+      active: "defold-1.12.4",
+    });
+
+    const dir = path.join(cwd, ".defold-types", "defold-1.12.4");
+    expect(readFileSync(path.join(dir, "label.d.ts"), "utf8")).toContain("__label");
+    expect(readFileSync(path.join(dir, "sprite.d.ts"), "utf8")).toContain("__sprite");
+
+    expect(readFileSync(path.join(dir, "index.d.ts"), "utf8")).toBe(
+      'import "./label";\nimport "./sprite";\n\nexport {};\n',
+    );
+
+    const pkg = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")) as {
+      name: string;
+      types: string;
+    };
+    expect(pkg.types).toBe("index.d.ts");
+    expect(pkg.name.length).toBeGreaterThan(0);
+  });
+
+  test("materializes the src-sibling overloads and core-types alongside the modules", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-typesroot-"));
+    try {
+      const gen = path.join(root, "generated");
+      const src = path.join(root, "src");
+      mkdirSync(gen);
+      mkdirSync(src);
+      writeFileSync(path.join(gen, "msg.d.ts"), "declare const __msg: unknown;\n");
+      writeFileSync(
+        path.join(src, "core-types.ts"),
+        "export type Hash = { readonly __hash: unique symbol };\n",
+      );
+      writeFileSync(
+        path.join(src, "msg-overloads.d.ts"),
+        'import type { Hash } from "./core-types";\ndeclare global {\n  namespace msg {\n    function post(receiver: Hash): void;\n  }\n}\nexport {};\n',
+      );
+      writeFileSync(
+        path.join(src, "go-overloads.d.ts"),
+        "declare global {\n  namespace go {\n    function get(): void;\n  }\n}\nexport {};\n",
+      );
+
+      materializeApiSurface({ cwd, surface: CURRENT, sourceGeneratedDir: gen });
+
+      const dir = path.join(cwd, ".defold-types", "defold-1.12.4");
+      expect(existsSync(path.join(dir, "msg-overloads.d.ts"))).toBe(true);
+      expect(existsSync(path.join(dir, "go-overloads.d.ts"))).toBe(true);
+      expect(existsSync(path.join(dir, "core-types.d.ts"))).toBe(true);
+      const index = readFileSync(path.join(dir, "index.d.ts"), "utf8");
+      expect(index).toContain('import "./msg-overloads";');
+      expect(index).toContain('import "./go-overloads";');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("an unavailable surface writes nothing and returns nulls", () => {
+    seedSource(["label"]);
+
+    const result = materializeApiSurface({
+      cwd,
+      surface: UNAVAILABLE,
+      sourceGeneratedDir: sourceDir,
+    });
+
+    expect(result).toEqual({ materializedDir: null, active: null });
+    expect(existsSync(path.join(cwd, ".defold-types"))).toBe(false);
+  });
+
+  test("re-running is idempotent and prunes stale modules from a prior surface", () => {
+    seedSource(["label", "sprite"]);
+    materializeApiSurface({ cwd, surface: CURRENT, sourceGeneratedDir: sourceDir });
+
+    rmSync(path.join(sourceDir, "sprite.d.ts"));
+    const result = materializeApiSurface({ cwd, surface: CURRENT, sourceGeneratedDir: sourceDir });
+
+    const dir = path.join(cwd, ".defold-types", "defold-1.12.4");
+    expect(result).toEqual({
+      materializedDir: ".defold-types/defold-1.12.4",
+      active: "defold-1.12.4",
+    });
+    expect(existsSync(path.join(dir, "sprite.d.ts"))).toBe(false);
+    expect(existsSync(path.join(dir, "label.d.ts"))).toBe(true);
+    expect(readFileSync(path.join(dir, "index.d.ts"), "utf8")).toBe(
+      'import "./label";\n\nexport {};\n',
+    );
+  });
+});
+
+describe("materializeApiSurface kind-aware narrowing", () => {
+  function materializedNames(): string[] {
+    const dir = path.join(cwd, ".defold-types", "defold-1.12.4");
+    return readdirSync(dir).filter((file) => file.endsWith(".d.ts") && file !== "index.d.ts");
+  }
+
+  function indexContents(): string {
+    return readFileSync(path.join(cwd, ".defold-types", "defold-1.12.4", "index.d.ts"), "utf8");
+  }
+
+  test("scriptKind script drops gui and render, keeps universal modules", () => {
+    seedSource(["label", "gui", "render"]);
+
+    materializeApiSurface({
+      cwd,
+      surface: CURRENT,
+      sourceGeneratedDir: sourceDir,
+      scriptKind: "script",
+    });
+
+    expect(materializedNames().sort()).toEqual(["label.d.ts"]);
+    expect(indexContents()).toBe('import "./label";\n\nexport {};\n');
+  });
+
+  test("scriptKind gui-script keeps gui, drops render", () => {
+    seedSource(["label", "gui", "render"]);
+
+    materializeApiSurface({
+      cwd,
+      surface: CURRENT,
+      sourceGeneratedDir: sourceDir,
+      scriptKind: "gui-script",
+    });
+
+    expect(materializedNames().sort()).toEqual(["gui.d.ts", "label.d.ts"]);
+    expect(indexContents()).toBe('import "./gui";\nimport "./label";\n\nexport {};\n');
+  });
+
+  test("scriptKind render-script keeps render, drops gui", () => {
+    seedSource(["label", "gui", "render"]);
+
+    materializeApiSurface({
+      cwd,
+      surface: CURRENT,
+      sourceGeneratedDir: sourceDir,
+      scriptKind: "render-script",
+    });
+
+    expect(materializedNames().sort()).toEqual(["label.d.ts", "render.d.ts"]);
+    expect(indexContents()).toBe('import "./label";\nimport "./render";\n\nexport {};\n');
+  });
+
+  test("omitting scriptKind (and null) copies every module — byte-identical to today", () => {
+    seedSource(["label", "gui", "render"]);
+    const expectedIndex = 'import "./gui";\nimport "./label";\nimport "./render";\n\nexport {};\n';
+
+    materializeApiSurface({ cwd, surface: CURRENT, sourceGeneratedDir: sourceDir });
+    expect(materializedNames().sort()).toEqual(["gui.d.ts", "label.d.ts", "render.d.ts"]);
+    expect(indexContents()).toBe(expectedIndex);
+
+    materializeApiSurface({
+      cwd,
+      surface: CURRENT,
+      sourceGeneratedDir: sourceDir,
+      scriptKind: null,
+    });
+    expect(materializedNames().sort()).toEqual(["gui.d.ts", "label.d.ts", "render.d.ts"]);
+    expect(indexContents()).toBe(expectedIndex);
+  });
+
+  test("re-narrowing removes a stale module dropped by a tighter kind", () => {
+    seedSource(["label", "gui", "render"]);
+
+    materializeApiSurface({
+      cwd,
+      surface: CURRENT,
+      sourceGeneratedDir: sourceDir,
+      scriptKind: null,
+    });
+    expect(materializedNames()).toContain("render.d.ts");
+
+    materializeApiSurface({
+      cwd,
+      surface: CURRENT,
+      sourceGeneratedDir: sourceDir,
+      scriptKind: "gui-script",
+    });
+
+    expect(materializedNames().sort()).toEqual(["gui.d.ts", "label.d.ts"]);
+    expect(existsSync(path.join(cwd, ".defold-types", "defold-1.12.4", "render.d.ts"))).toBe(false);
+  });
+});
+
+describe("ensureMaterializedReference", () => {
+  function writeTsconfig(value: unknown): void {
+    writeFileSync(path.join(cwd, "tsconfig.json"), `${JSON.stringify(value, null, 2)}\n`);
+  }
+
+  test("repoints tsconfig at the materialized package as the sole ambient surface", () => {
+    writeTsconfig({
+      compilerOptions: { strict: true, types: ["@defold-typescript/types"] },
+      include: ["src/**/*.ts"],
+    });
+
+    ensureMaterializedReference(cwd, ".defold-types/defold-1.12.4");
+
+    const tsconfig = JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8")) as {
+      compilerOptions: { types: string[]; typeRoots: string[] };
+    };
+    expect(tsconfig.compilerOptions.types).toEqual(["defold-1.12.4"]);
+    expect(tsconfig.compilerOptions.types).not.toContain("@defold-typescript/types");
+    expect(tsconfig.compilerOptions.typeRoots).toEqual([".defold-types"]);
+  });
+
+  test("adds .defold-types/ to .gitignore", () => {
+    writeTsconfig({ compilerOptions: {} });
+    writeFileSync(path.join(cwd, ".gitignore"), "src/**/*.lua\n");
+
+    ensureMaterializedReference(cwd, ".defold-types/defold-1.12.4");
+
+    const gitignore = readFileSync(path.join(cwd, ".gitignore"), "utf8");
+    expect(gitignore).toContain(".defold-types/");
+    expect(gitignore).toContain("src/**/*.lua");
+  });
+
+  test("is idempotent on re-run", () => {
+    writeTsconfig({ compilerOptions: { types: ["@defold-typescript/types"] } });
+
+    ensureMaterializedReference(cwd, ".defold-types/defold-1.12.4");
+    const first = readFileSync(path.join(cwd, "tsconfig.json"), "utf8");
+    ensureMaterializedReference(cwd, ".defold-types/defold-1.12.4");
+    const second = readFileSync(path.join(cwd, "tsconfig.json"), "utf8");
+
+    expect(second).toBe(first);
+  });
+
+  test("a null materializedDir leaves tsconfig and .gitignore untouched", () => {
+    writeTsconfig({ compilerOptions: { types: ["@defold-typescript/types"] } });
+    const before = readFileSync(path.join(cwd, "tsconfig.json"), "utf8");
+
+    ensureMaterializedReference(cwd, null);
+
+    expect(readFileSync(path.join(cwd, "tsconfig.json"), "utf8")).toBe(before);
+    expect(existsSync(path.join(cwd, ".gitignore"))).toBe(false);
+  });
+});
+
+describe("materializeRefDocSurface kind-aware narrowing", () => {
+  test("scriptKind render-script keeps render, drops gui from the ref-doc surface", async () => {
+    const resolveOpts = multiKindRefDocResolveOpts();
+
+    const { materializedDir } = await materializeRefDocSurface({
+      cwd,
+      surfaceId: "defold-1.9.8",
+      scriptKind: "render-script",
+      resolveOpts,
+      registry: [multiKindRefDocTarget()],
+    });
+    expect(materializedDir).toBe(".defold-types/defold-1.9.8");
+
+    const dir = path.join(cwd, ".defold-types", "defold-1.9.8");
+    expect(existsSync(path.join(dir, "render.d.ts"))).toBe(true);
+    expect(existsSync(path.join(dir, "sprite.d.ts"))).toBe(true);
+    expect(existsSync(path.join(dir, "gui.d.ts"))).toBe(false);
+    expect(readFileSync(path.join(dir, "index.d.ts"), "utf8")).not.toContain('import "./gui";');
+
+    rmSync(resolveOpts.cacheDir, { recursive: true, force: true });
+  });
+
+  test("scriptKind script drops both gui and render", async () => {
+    const resolveOpts = multiKindRefDocResolveOpts();
+
+    await materializeRefDocSurface({
+      cwd,
+      surfaceId: "defold-1.9.8",
+      scriptKind: "script",
+      resolveOpts,
+      registry: [multiKindRefDocTarget()],
+    });
+
+    const dir = path.join(cwd, ".defold-types", "defold-1.9.8");
+    expect(existsSync(path.join(dir, "gui.d.ts"))).toBe(false);
+    expect(existsSync(path.join(dir, "render.d.ts"))).toBe(false);
+    expect(existsSync(path.join(dir, "sprite.d.ts"))).toBe(true);
+
+    rmSync(resolveOpts.cacheDir, { recursive: true, force: true });
+  });
+
+  test("scriptKind null keeps every module — current behavior preserved", async () => {
+    const resolveOpts = multiKindRefDocResolveOpts();
+
+    await materializeRefDocSurface({
+      cwd,
+      surfaceId: "defold-1.9.8",
+      scriptKind: null,
+      resolveOpts,
+      registry: [multiKindRefDocTarget()],
+    });
+
+    const dir = path.join(cwd, ".defold-types", "defold-1.9.8");
+    expect(existsSync(path.join(dir, "gui.d.ts"))).toBe(true);
+    expect(existsSync(path.join(dir, "render.d.ts"))).toBe(true);
+    expect(existsSync(path.join(dir, "sprite.d.ts"))).toBe(true);
+
+    rmSync(resolveOpts.cacheDir, { recursive: true, force: true });
+  });
+});
+
+describe("materializeRefDocSurface consumer proof", () => {
+  test("a generated .defold-types/<id>/ surface type-checks via tsc", async () => {
+    const resolveOpts = labelRefDocResolveOpts();
+    writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      `${JSON.stringify(
+        {
+          compilerOptions: {
+            strict: true,
+            module: "ESNext",
+            moduleResolution: "bundler",
+            lib: ["ES2022"],
+            skipLibCheck: true,
+            noEmit: true,
+          },
+          include: ["proof.ts"],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const { materializedDir } = await materializeRefDocSurface({
+      cwd,
+      surfaceId: "defold-1.9.8",
+      resolveOpts,
+    });
+    expect(materializedDir).toBe(".defold-types/defold-1.9.8");
+
+    ensureMaterializedReference(cwd, materializedDir);
+
+    const dir = path.join(cwd, ".defold-types", "defold-1.9.8");
+    expect(existsSync(path.join(dir, "label.d.ts"))).toBe(true);
+    expect(existsSync(path.join(dir, "core-types.d.ts"))).toBe(true);
+
+    writeFileSync(
+      path.join(cwd, "proof.ts"),
+      'export {};\nconst _t: string = label.get_text("score");\nvoid _t;\n',
+    );
+
+    const { exitCode, output } = typecheck(path.join(cwd, "tsconfig.json"));
+    if (exitCode !== 0) {
+      throw new Error(`materialized defold-1.9.8 surface did not type-check:\n${output}`);
+    }
+    expect(exitCode).toBe(0);
+
+    rmSync(resolveOpts.cacheDir, { recursive: true, force: true });
+  });
+});

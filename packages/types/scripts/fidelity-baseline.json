@@ -1,0 +1,282 @@
+{
+  "b2d": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "buffer": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "camera": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "collectionfactory": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 2,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "collectionproxy": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 1,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "crash": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 2,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "factory": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 1,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "go": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 2,
+    "multiReturn": 0,
+    "droppedMembers": 2,
+    "optionalAsRequired": 0
+  },
+  "graphics": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "gui": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 2,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "http": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 1,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "iac": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 1,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "iap": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 3,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "image": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "json": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "label": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "liveupdate": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 1,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "model": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 2,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "msg": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 1,
+    "optionalAsRequired": 0
+  },
+  "particlefx": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "physics": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 5,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "profiler": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 1,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "push": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 4,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "render": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 4,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "resource": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 3,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "socket": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 8,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "sound": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "sprite": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "sys": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "tilemap": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 2,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "timer": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "vmath": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "webview": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 1,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "window": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
+  "zlib": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  }
+}

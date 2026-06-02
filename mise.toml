@@ -1,0 +1,39 @@
+[tools]
+bun = "1.3"
+
+[tasks.sync-api-docs-check]
+description = "Check vendored Defold API fixtures for drift against the pinned ref-doc.zip"
+dir = "{{config_root}}/packages/types"
+run = "bun run sync-api-docs --check"
+
+[tasks.current-version]
+description = "Show the currently-published npm version of each workspace package"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+for pkg in @defold-typescript/types @defold-typescript/transpiler @defold-typescript/cli; do
+  version=$(bun pm view "$pkg" version 2>/dev/null || true)
+  printf '%s\\t%s\\n' "$pkg" "${version:-(unpublished)}"
+done
+"""
+
+[tasks.smoke]
+description = "Advisory packed-install release smoke (network-touching, not a CI gate)"
+run = "bun scripts/release-smoke.ts"
+
+[tasks.release]
+description = "Create and push a release tag. Usage: mise run release 1.0.0"
+run = """
+#!/usr/bin/env bash
+set -e
+VERSION="$1"
+if [ -z "$VERSION" ]; then
+  echo "Usage: mise run release <version>"
+  echo "Example: mise run release 1.0.0"
+  exit 1
+fi
+echo "Creating release v$VERSION..."
+git tag -a "v$VERSION" -m "Release v$VERSION"
+git push origin "v$VERSION"
+echo "Done! Watch the release at: https://github.com/king8fisher/defold-typescript/actions"
+"""

@@ -1,0 +1,181 @@
+import { describe, expect, test } from "bun:test";
+import { readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  generateBuiltinMessagesDeclaration,
+  generateKindIndex,
+  generateModuleDeclaration,
+  generateVersionIndex,
+  KIND_MODULE_MANIFEST,
+  MESSAGES_MANIFEST,
+  MODULE_MANIFEST,
+  VERSIONED_MODULE_MANIFEST,
+} from "../scripts/regen";
+
+const GENERATED = resolve(import.meta.dir, "..", "generated");
+
+describe("regen drift guard", () => {
+  test.each(
+    MODULE_MANIFEST.map((entry) => [entry.namespace, entry] as const),
+  )("%s: committed generated file matches a fresh pipeline run byte-for-byte", async (_namespace, entry) => {
+    const { contents: fresh } = generateModuleDeclaration(entry);
+    const committed = await Bun.file(resolve(GENERATED, entry.outFile)).text();
+    if (committed !== fresh) {
+      throw new Error(`${entry.outFile} is stale — run \`bun run regen\` in \`packages/types/\``);
+    }
+    expect(committed).toBe(fresh);
+  });
+
+  test.each(
+    MODULE_MANIFEST.map((entry) => [entry.outFile, entry] as const),
+  )("%s: committed generated file is syntactically-valid TypeScript", async (_outFile, entry) => {
+    const content = await Bun.file(resolve(GENERATED, entry.outFile)).text();
+    const transpiler = new Bun.Transpiler({ loader: "ts" });
+    expect(() => transpiler.scan(content)).not.toThrow();
+  });
+
+  test("every MODULE_MANIFEST entry has a committed generated file", () => {
+    for (const entry of MODULE_MANIFEST) {
+      const path = resolve(GENERATED, entry.outFile);
+      const exists = Bun.file(path).size > 0;
+      if (!exists) {
+        throw new Error(
+          `MODULE_MANIFEST entry "${entry.namespace}" references missing file ${entry.outFile}`,
+        );
+      }
+      expect(exists).toBe(true);
+    }
+  });
+
+  test("every committed generated/*.d.ts is referenced by exactly one manifest entry", () => {
+    const onDisk = readdirSync(GENERATED).filter((f) => f.endsWith(".d.ts"));
+    for (const file of onDisk) {
+      const moduleMatches = MODULE_MANIFEST.filter((e) => e.outFile === file).length;
+      const messagesMatches = MESSAGES_MANIFEST.outFile === file ? 1 : 0;
+      const total = moduleMatches + messagesMatches;
+      if (total !== 1) {
+        throw new Error(
+          `generated/${file} is referenced by ${total} manifest entries (expected exactly 1)`,
+        );
+      }
+      expect(total).toBe(1);
+    }
+  });
+});
+
+describe("go get/set skip", () => {
+  test("generated go.d.ts declares neither `function get(` nor `function set(`, but keeps animate/property and the properties interface", () => {
+    const go = MODULE_MANIFEST.find((e) => e.namespace === "go");
+    if (!go) throw new Error("go manifest entry missing");
+    const { contents, dropped } = generateModuleDeclaration(go);
+    expect(contents).not.toContain("function get(");
+    expect(contents).not.toContain("function set(");
+    expect(contents).toContain("function animate(");
+    expect(contents).toContain("function property(");
+    expect(contents).toContain("interface properties {");
+    expect(dropped).toContain("go.get");
+    expect(dropped).toContain("go.set");
+  });
+});
+
+describe("reserved-name member recovery", () => {
+  test("go no longer drops go.delete (recovered via alias) but still drops the skip-functions", () => {
+    const go = MODULE_MANIFEST.find((e) => e.namespace === "go");
+    if (!go) throw new Error("go manifest entry missing");
+    const { contents, dropped } = generateModuleDeclaration(go);
+    expect(dropped).not.toContain("go.delete");
+    expect(dropped).toContain("go.get");
+    expect(dropped).toContain("go.set");
+    expect(contents).toContain("function _delete(");
+    expect(contents).toContain("export { _delete as delete };");
+  });
+
+  test("json drops nothing — its only reserved member json.null is recovered", () => {
+    const json = MODULE_MANIFEST.find((e) => e.namespace === "json");
+    if (!json) throw new Error("json manifest entry missing");
+    const { contents, dropped } = generateModuleDeclaration(json);
+    expect(dropped).toEqual([]);
+    expect(contents).toContain("export { _null as null };");
+  });
+});
+
+describe("versioned regen drift guard", () => {
+  test.each(
+    VERSIONED_MODULE_MANIFEST.map(
+      (entry) => [`${entry.versionId}/${entry.namespace}`, entry] as const,
+    ),
+  )("%s: committed versioned file matches a fresh pipeline run byte-for-byte", async (_label, entry) => {
+    const { contents: fresh } = generateModuleDeclaration(entry);
+    const path = resolve(GENERATED, "versions", entry.versionId, entry.outFile);
+    const committed = await Bun.file(path).text();
+    if (committed !== fresh) {
+      throw new Error(
+        `versions/${entry.versionId}/${entry.outFile} is stale — run \`bun run regen\` in \`packages/types/\``,
+      );
+    }
+    expect(committed).toBe(fresh);
+  });
+
+  test.each(
+    VERSIONED_MODULE_MANIFEST.map(
+      (entry) => [`${entry.versionId}/${entry.outFile}`, entry] as const,
+    ),
+  )("%s: committed versioned file is syntactically-valid TypeScript", async (_label, entry) => {
+    const path = resolve(GENERATED, "versions", entry.versionId, entry.outFile);
+    const content = await Bun.file(path).text();
+    const transpiler = new Bun.Transpiler({ loader: "ts" });
+    expect(() => transpiler.scan(content)).not.toThrow();
+  });
+
+  test.each([
+    ...new Set(VERSIONED_MODULE_MANIFEST.map((entry) => entry.versionId)),
+  ])("%s: committed per-version index.d.ts matches a fresh generateVersionIndex", async (versionId) => {
+    const fresh = generateVersionIndex(versionId);
+    const path = resolve(GENERATED, "versions", versionId, "index.d.ts");
+    const committed = await Bun.file(path).text();
+    if (committed !== fresh) {
+      throw new Error(
+        `versions/${versionId}/index.d.ts is stale — run \`bun run regen\` in \`packages/types/\``,
+      );
+    }
+    expect(committed).toBe(fresh);
+  });
+});
+
+describe("per-kind regen drift guard", () => {
+  test.each(
+    KIND_MODULE_MANIFEST.map((entry) => [entry.kind, entry] as const),
+  )("%s: committed generated/kinds file matches a fresh generateKindIndex", async (kind, _entry) => {
+    const fresh = generateKindIndex(kind);
+    const path = resolve(GENERATED, "kinds", `${kind}.d.ts`);
+    const committed = await Bun.file(path).text();
+    if (committed !== fresh) {
+      throw new Error(`kinds/${kind}.d.ts is stale — run \`bun run regen\` in \`packages/types/\``);
+    }
+    expect(committed).toBe(fresh);
+  });
+});
+
+describe("regen drift guard — builtin messages", () => {
+  test("committed builtin-messages.d.ts matches a fresh pipeline run byte-for-byte", async () => {
+    const fresh = generateBuiltinMessagesDeclaration(MESSAGES_MANIFEST);
+    const committed = await Bun.file(resolve(GENERATED, MESSAGES_MANIFEST.outFile)).text();
+    if (committed !== fresh) {
+      throw new Error(
+        `${MESSAGES_MANIFEST.outFile} is stale — run \`bun run regen\` in \`packages/types/\``,
+      );
+    }
+    expect(committed).toBe(fresh);
+  });
+
+  test("committed builtin-messages.d.ts is syntactically-valid TypeScript", async () => {
+    const content = await Bun.file(resolve(GENERATED, MESSAGES_MANIFEST.outFile)).text();
+    const transpiler = new Bun.Transpiler({ loader: "ts" });
+    expect(() => transpiler.scan(content)).not.toThrow();
+  });
+
+  test("MESSAGES_MANIFEST entry has a committed generated file", () => {
+    const path = resolve(GENERATED, MESSAGES_MANIFEST.outFile);
+    expect(Bun.file(path).size > 0).toBe(true);
+  });
+});
