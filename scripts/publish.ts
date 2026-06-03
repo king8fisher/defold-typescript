@@ -268,9 +268,11 @@ async function main(): Promise<void> {
   process.stdout.write(`target version:    ${target}\n`);
   process.stdout.write(`mode:              ${args.doPublish ? "PUBLISH (real)" : "dry-run"}\n\n`);
 
-  // build before test: the publish-pack / release-bin-smoke tests build the
-  // cli, which resolves the transpiler through its built dist/.
-  for (const step of ["typecheck", "lint", "build", "test"]) {
+  // build first: cli's typecheck resolves @defold-typescript/transpiler through
+  // its built dist/ (declarations only exist post-build), and the publish-pack /
+  // release-bin-smoke tests build the cli the same way. typecheck/lint/test all
+  // assume dist/ is present, so the build gate must precede them.
+  for (const step of ["build", "typecheck", "lint", "test"]) {
     process.stdout.write(`gate: bun run ${step}\n`);
     if (run(["bun", "run", step], { inherit: true }).code !== 0) {
       die(`gate failed at \`bun run ${step}\``);
