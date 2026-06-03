@@ -3,7 +3,12 @@ import { bumpVersion, compareVersions, maxVersion, parseArgs, resolveTarget } fr
 
 describe("parseArgs", () => {
   test("defaults to a dry-run patch bump", () => {
-    expect(parseArgs([])).toEqual({ spec: "patch", doPublish: false, help: false });
+    expect(parseArgs([])).toEqual({
+      spec: "patch",
+      doPublish: false,
+      help: false,
+      skipCiCheck: false,
+    });
   });
 
   test("reads a bump keyword and the --publish flag in any order", () => {
@@ -11,11 +16,22 @@ describe("parseArgs", () => {
       spec: "minor",
       doPublish: true,
       help: false,
+      skipCiCheck: false,
     });
     expect(parseArgs(["--publish", "0.3.0"])).toEqual({
       spec: "0.3.0",
       doPublish: true,
       help: false,
+      skipCiCheck: false,
+    });
+  });
+
+  test("reads the --skip-ci-check escape hatch", () => {
+    expect(parseArgs(["minor", "--publish", "--skip-ci-check"])).toEqual({
+      spec: "minor",
+      doPublish: true,
+      help: false,
+      skipCiCheck: true,
     });
   });
 

@@ -45,6 +45,7 @@ export interface Args {
   readonly spec: string;
   readonly doPublish: boolean;
   readonly help: boolean;
+  readonly skipCiCheck: boolean;
 }
 
 export const HELP = `Coordinated local npm publish for the three @defold-typescript packages.
@@ -65,6 +66,8 @@ Arguments:
 
 Flags:
   --publish               cut a real release (bun prompts for the npm OTP under 2FA)
+  --skip-ci-check         publish even if HEAD is not on origin's default branch
+                          with a green CI run (emergency escape hatch)
   -h, --help              show this help
 
 Examples:
@@ -79,11 +82,14 @@ export function parseArgs(argv: readonly string[]): Args {
   const positional: string[] = [];
   let doPublish = false;
   let help = false;
+  let skipCiCheck = false;
   for (const arg of argv) {
     if (arg === "--help" || arg === "-h") {
       help = true;
     } else if (arg === "--publish") {
       doPublish = true;
+    } else if (arg === "--skip-ci-check") {
+      skipCiCheck = true;
     } else if (arg.startsWith("-")) {
       throw new Error(`unknown flag: ${arg}`);
     } else {
@@ -93,7 +99,7 @@ export function parseArgs(argv: readonly string[]): Args {
   if (positional.length > 1) {
     throw new Error(`expected one version/bump argument, got: ${positional.join(", ")}`);
   }
-  return { spec: positional[0] ?? "patch", doPublish, help };
+  return { spec: positional[0] ?? "patch", doPublish, help, skipCiCheck };
 }
 
 export function compareVersions(a: string, b: string): number {
@@ -175,6 +181,77 @@ function requireAuth(): void {
     );
   }
   process.stdout.write(`npm user: ${who}\n`);
+}
+
+// Refuse to publish a commit that has not landed on origin's default branch
+// with a green CI matrix. Without this, a local `--publish` ships npm artifacts
+// (and a release tag) cut from commits that never reached the remote mainline,
+// so a fresh clone of the default branch does not contain the published code.
+// `bun publish` has no OIDC/trusted-publishing path, so this commit-provenance
+// gate is the available substitute for publishing from CI itself. The CI matrix
+// spans three OSes; the local gate runs one, so this also catches an
+// OS-specific failure that the local build/typecheck/lint/test would miss.
+// Escape with --skip-ci-check when CI infra is down and a release can't wait.
+function requireGreenCI(): void {
+  const headRef = run(["git", "rev-parse", "--abbrev-ref", "origin/HEAD"]);
+  const remoteBranch = headRef.code === 0 ? headRef.output.trim() : "origin/main";
+
+  run(["git", "fetch", "origin", "--quiet"]);
+
+  const head = run(["git", "rev-parse", "HEAD"]).output.trim();
+  if (run(["git", "merge-base", "--is-ancestor", head, remoteBranch]).code !== 0) {
+    die(
+      `HEAD ${head.slice(0, 9)} is not on ${remoteBranch}; push it and let CI finish ` +
+        "before publishing (or --skip-ci-check to override)",
+    );
+  }
+
+  const probe = run([
+    "gh",
+    "run",
+    "list",
+    "--commit",
+    head,
+    "--workflow",
+    "ci.yml",
+    "--json",
+    "status,conclusion,url",
+    "--limit",
+    "20",
+  ]);
+  if (probe.code !== 0) {
+    die(
+      `could not query CI status via gh (${probe.output.trim() || "command failed"}); ` +
+        "is gh installed and authenticated? (or --skip-ci-check to override)",
+    );
+  }
+
+  let runs: Array<{ status: string; conclusion: string | null; url: string }>;
+  try {
+    runs = JSON.parse(probe.output);
+  } catch {
+    die(`could not parse gh run list output:\n${probe.output}`);
+  }
+  if (runs.length === 0) {
+    die(
+      `no CI run found for HEAD ${head.slice(0, 9)}; wait for CI to start and finish ` +
+        "before publishing (or --skip-ci-check to override)",
+    );
+  }
+
+  // gh returns newest first; the most recent run for the commit is authoritative
+  // (a re-run supersedes earlier attempts).
+  const latest = runs[0];
+  if (latest.status !== "completed") {
+    die(`CI for HEAD ${head.slice(0, 9)} is still ${latest.status}; wait for it (${latest.url})`);
+  }
+  if (latest.conclusion !== "success") {
+    die(
+      `CI for HEAD ${head.slice(0, 9)} concluded ${latest.conclusion}, not success; ` +
+        `fix CI before publishing (${latest.url})`,
+    );
+  }
+  process.stdout.write(`CI green for HEAD ${head.slice(0, 9)} on ${remoteBranch}\n`);
 }
 
 function publishedVersions(): string[] {
@@ -277,6 +354,11 @@ async function main(): Promise<void> {
   // Only a real publish needs registry write auth; the dry-run never uploads.
   if (args.doPublish) {
     requireAuth();
+    if (args.skipCiCheck) {
+      process.stdout.write("warning: --skip-ci-check set; publishing without the CI-green gate\n");
+    } else {
+      requireGreenCI();
+    }
   }
 
   const published = publishedVersions();
