@@ -29,6 +29,12 @@ short `defold-typescript` name, install the package first so the binary lands in
 bun add -d @defold-typescript/cli   # then: bunx defold-typescript <command>
 ```
 
+Check which version you are running with `-v` / `--version`:
+
+```sh
+bunx @defold-typescript/cli --version
+```
+
 ## Scaffold a project
 
 ```sh
