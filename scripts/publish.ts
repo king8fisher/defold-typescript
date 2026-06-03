@@ -158,6 +158,25 @@ function die(message: string): never {
   process.exit(1);
 }
 
+// Fail fast on a missing/expired npm token before mutating the tree or running
+// the gate. npm masks an unauthorized scoped publish as a 404 ("does not exist
+// in this registry"), so without this an expired token only surfaces after a
+// full build/typecheck/lint/test gate, mid-publish. `bun pm whoami` exits 0
+// even on a 401, printing the HTTP status line instead of a username — so judge
+// by output, treating an empty result or any line with an HTTP error / the word
+// "Unauthorized" as not authenticated.
+function requireAuth(): void {
+  const { output } = run(["bun", "pm", "whoami"]);
+  const who = output.trim();
+  if (who === "" || /unauthorized/i.test(who) || /^\d{3}\b/.test(who)) {
+    die(
+      `not authenticated to npm (\`bun pm whoami\` -> ${who || "no output"}). ` +
+        "Refresh your token: `npm login`, or replace the _authToken in ~/.npmrc, then retry.",
+    );
+  }
+  process.stdout.write(`npm user: ${who}\n`);
+}
+
 function publishedVersions(): string[] {
   return SCOPED.map((pkg) => {
     const { code, output } = run(["bun", "pm", "view", pkg, "version"]);
@@ -253,6 +272,11 @@ async function main(): Promise<void> {
 
   if (run(["git", "status", "--porcelain"]).output.trim() !== "") {
     die("working tree is not clean; commit or stash before publishing");
+  }
+
+  // Only a real publish needs registry write auth; the dry-run never uploads.
+  if (args.doPublish) {
+    requireAuth();
   }
 
   const published = publishedVersions();
