@@ -3,6 +3,7 @@ import * as path from "node:path";
 import type { RegistryTarget } from "./api-registry";
 import { CURRENT_STABLE_SURFACE_ID, selectApiSurface } from "./api-surface";
 import { runBuild } from "./build";
+import { readCliVersion } from "./cli-version";
 import { readDefoldVersionPin, resolveDefoldVersion } from "./defold-version";
 import { runInit } from "./init";
 import { renderResult } from "./json-output";
@@ -35,6 +36,7 @@ export interface DispatchInternals {
   readonly sourceGeneratedDir?: string;
   readonly resolveOpts?: RefDocResolveOptions;
   readonly refDocRegistry?: readonly RegistryTarget[];
+  readonly cliVersion?: string;
 }
 
 const USAGE = "Usage: defold-typescript <init|build|watch> [path]\n";
@@ -74,6 +76,17 @@ export function dispatch(
   internals?: DispatchInternals,
 ): number | Promise<number> {
   const json = argv.includes("--json");
+
+  if (argv.includes("--version") || argv.includes("-v")) {
+    const version = internals?.cliVersion ?? readCliVersion();
+    io.stdout.write(
+      json
+        ? `{"command":"version","ok":true,"version":${JSON.stringify(version)}}\n`
+        : `defold-typescript ${version}\n`,
+    );
+    return 0;
+  }
+
   const force = argv.includes("--force");
   const { flag: defoldVersionFlag, rest: nonFlagArgs } = parseDefoldVersionFlag(argv);
   const positional = nonFlagArgs.filter((a) => a !== "--json" && a !== "--force");

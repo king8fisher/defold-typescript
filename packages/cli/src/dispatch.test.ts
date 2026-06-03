@@ -138,6 +138,45 @@ describe("dispatch", () => {
     expect(err()).toBe("Usage: defold-typescript <init|build|watch> [path]\n");
   });
 
+  test("--version prints the CLI version to stdout and returns 0", () => {
+    const { io, out, err } = captureStreams();
+
+    const code = dispatch(["--version"], io, { cliVersion: "1.2.3" });
+
+    expect(code).toBe(0);
+    expect(out()).toBe("defold-typescript 1.2.3\n");
+    expect(err()).toBe("");
+  });
+
+  test("-v behaves identically to --version", () => {
+    const { io, out, err } = captureStreams();
+
+    const code = dispatch(["-v"], io, { cliVersion: "1.2.3" });
+
+    expect(code).toBe(0);
+    expect(out()).toBe("defold-typescript 1.2.3\n");
+    expect(err()).toBe("");
+  });
+
+  test("--version --json emits the machine-readable shape", () => {
+    const { io, out } = captureStreams();
+
+    const code = dispatch(["--version", "--json"], io, { cliVersion: "1.2.3" });
+
+    expect(code).toBe(0);
+    expect(out()).toBe('{"command":"version","ok":true,"version":"1.2.3"}\n');
+  });
+
+  test("--version short-circuits before command resolution and does not print usage", () => {
+    const { io, out, err } = captureStreams();
+
+    const code = dispatch(["--version"], io, { cliVersion: "1.2.3" });
+
+    expect(code).toBe(0);
+    expect(out()).not.toContain("Usage:");
+    expect(err()).not.toContain("Usage:");
+  });
+
   test("build <path> runs runBuild and returns 0 on success", () => {
     const tsconfig = JSON.stringify(
       { compilerOptions: { strict: true }, include: ["src/**/*.ts"] },
