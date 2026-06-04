@@ -15,12 +15,15 @@ This is a self-contained, openable Defold project: clone the repo, open
 The Defold project files here (`assets/`, `game/`, `input/`, `game.project`)
 are derived from [`defold/template-platformer`](https://github.com/defold/template-platformer),
 `Copyright (c) 2020 Defold`, MIT — see `LICENSE`. `src/player.ts` is our
-TypeScript conversion of `game/player.script`.
+TypeScript conversion of the upstream `game/player.script` (preserved at
+`vendor/template-platformer/game/player.script`).
 
 ## Layout
 
-- `game.project`, `game/`, `assets/`, `input/` — the Defold project (runs the
-  original `game/player.script` today; see the keystone gap below).
+- `game.project`, `game/`, `assets/`, `input/` — the Defold project. The
+  embedded `player` component runs `/src/player.ts.script`, emitted from
+  `src/player.ts` (run `mise run example-build` before opening in Defold — the
+  `.ts.script` is gitignored build output).
 - `src/player.ts` — the converted player logic, written with `defineScript`.
 - `src/env.d.ts` — ambient shims for Defold globals the type package does not
   declare yet (currently only `hash()`); each line is a tracked upstream gap.
@@ -40,7 +43,7 @@ mise run example-build      # or: bun packages/cli/src/bin.ts build docs/example
 mise run example-watch      # rebuild on every save
 ```
 
-`build` writes `src/player.lua` and materializes the local type surface into
+`build` writes `src/player.ts.script` and materializes the local type surface into
 `.defold-types/` (both gitignored). It also rewrites `tsconfig.json` to point at
 the materialized surface; `git checkout docs/examples/platformer/tsconfig.json`
 restores the committed `paths` form.
@@ -50,15 +53,12 @@ restores the committed `paths` form.
 Working end to end: the four lifecycle hooks (`init`, `fixed_update`,
 `on_message`, `on_input`) erase to top-level Defold functions, vector math
 (`v.add(...)`, `v.mul(dt)`) emits as native Lua operators, and the whole file
-type-checks and transpiles.
+type-checks and transpiles. The embedded `player` component references
+`/src/player.ts.script`, so after `mise run example-build` the editor's
+Build-and-Run runs the TypeScript-derived player logic.
 
 Open gaps surfaced by the conversion (each a tracked follow-up):
 
-- **Running the converted Lua as the component.** Defold still loads the
-  original `game/player.script`; nothing yet wires `src/player.lua` in as the
-  running component. This is the keystone decision (emit into the `.script`, or
-  a require-shim) and is unresolved, so the example type-checks and transpiles
-  but does not yet *run* the TypeScript.
 - **`on_message` narrowing.** Matching a pre-hashed `hash("contact_point_response")`
   id does not narrow the payload, so `message` is cast to a local `ContactPoint`
   shape in `player.ts`.
