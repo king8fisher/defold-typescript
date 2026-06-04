@@ -931,6 +931,17 @@ describe("function JSDoc emission", () => {
     );
   });
 
+  test("a function whose fixture carries an example emits a fenced @example block", () => {
+    const module = parseDefoldApiDoc(goDoc);
+    const out = emitDeclarations(module);
+    const block = jsdocBefore(out, "function get_position(");
+    expect(block).toContain(" * @example");
+    expect(block).toContain(" * ```lua");
+    expect(block).toContain(" * local p = go.get_position()");
+    expect(block).not.toContain("<span");
+    expect(block).not.toContain("class=");
+  });
+
   test("a function with a single documented return emits @returns with the rendered doc", () => {
     const module: ApiModule = {
       namespace: "ns",

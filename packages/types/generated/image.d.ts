@@ -30,6 +30,13 @@ declare global {
   - number `block_size_x`: block size x
   - number `block_size_y`: block size y
   - number `block_size_z`: block size z
+     * @example
+     * ```lua
+     * How to get the block size and dimensions from a .astc file
+     * local s = sys.load_resource("/assets/cat.astc")
+     * local header = image.get_astc_header(s)
+     * pprint(s)
+     * ```
      */
     function get_astc_header(buffer: string): { width: number; height: number; depth: number; block_size_x: number; block_size_y: number; block_size_z: number } | unknown;
     /**
@@ -50,6 +57,15 @@ declare global {
   - `image.TYPE_LUMINANCE`
   - `image.TYPE_LUMINANCE_ALPHA`
   - string `buffer`: the raw image data
+     * @example
+     * ```lua
+     * How to load an image from an URL and create a GUI texture from it:
+     * local imgurl = "http://www.site.com/image.png"
+     * http.request(imgurl, "GET", function(self, id, response)
+     *         local img = image.load(response.response)
+     *         local tx = gui.new_texture("image_node", img.width, img.height, img.type, img.buffer)
+     *     end)
+     * ```
      */
     function load(buffer: string, options?: { premultiply_alpha?: boolean; flip_vertically?: boolean }): { width: number; height: number; type: Opaque<"constant">; buffer: string } | unknown;
     /**
@@ -70,6 +86,23 @@ declare global {
   - `image.TYPE_LUMINANCE`
   - `image.TYPE_LUMINANCE_ALPHA`
   - buffer `buffer`: the script buffer that holds the decompressed image data. See buffer.create how to use the buffer.
+     * @example
+     * ```lua
+     * Load an image from an URL as a buffer and create a texture resource from it:
+     * local imgurl = "http://www.site.com/image.png"
+     * http.request(imgurl, "GET", function(self, id, response)
+     *         local img = image.load_buffer(response.response, { flip_vertically = true })
+     *         local tparams = {
+     *             width  = img.width,
+     *             height = img.height,
+     *             type   = graphics.TEXTURE_TYPE_2D,
+     *             format = graphics.TEXTURE_FORMAT_RGBA }
+     *
+     *         local my_texture_id = resource.create_texture("/my_custom_texture.texturec", tparams, img.buffer)
+     *         -- Apply the texture to a model
+     *         go.set("/go1#model", "texture0", my_texture_id)
+     *     end)
+     * ```
      */
     function load_buffer(buffer: string, options?: { premultiply_alpha?: boolean; flip_vertically?: boolean }): { width: number; height: number; type: Opaque<"constant">; buffer: Opaque<"buffer"> } | unknown;
   }

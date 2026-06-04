@@ -7,7 +7,12 @@ import type {
   ApiVariable,
 } from "./api-doc";
 import { DEFOLD_TYPE_MAP } from "./core-types";
-import { type DocCommentParts, htmlToDocText, renderDocComment } from "./doc-comment";
+import {
+  type DocCommentParts,
+  htmlToCodeText,
+  htmlToDocText,
+  renderDocComment,
+} from "./doc-comment";
 
 export interface EmitOptions {
   mapType?: (defoldType: string) => string;
@@ -615,10 +620,12 @@ function functionDocLines(fn: ApiFunction): string[] {
     doc: htmlToDocText(p.doc),
   }));
   const onlyReturn = fn.returnValues.length === 1 ? fn.returnValues[0] : undefined;
+  const example = htmlToCodeText(fn.examples ?? "");
   const parts: DocCommentParts = {
     summary: htmlToDocText(summaryFor(fn.brief, fn.description)),
     params,
     ...(onlyReturn ? { returns: htmlToDocText(onlyReturn.doc) } : {}),
+    ...(example !== "" ? { example } : {}),
   };
   return indentDocLines(parts, INDENT);
 }

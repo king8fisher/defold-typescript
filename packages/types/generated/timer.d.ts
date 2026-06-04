@@ -11,6 +11,15 @@ declare global {
      *
      * @param handle - the timer handle returned by timer.delay()
      * @returns if the timer was active, false if the timer is already cancelled / complete
+     * @example
+     * ```lua
+     * self.handle = timer.delay(1, true, function() print("print every second") end)
+     * ...
+     * local result = timer.cancel(self.handle)
+     * if not result then
+     *    print("the timer is already cancelled")
+     * end
+     * ```
      */
     function cancel(handle: number): boolean;
     /**
@@ -31,6 +40,23 @@ declare global {
   `time_elapsed`
   number The elapsed time - on first trigger it is time since timer.delay call, otherwise time since last trigger
      * @returns identifier for the create timer, returns timer.INVALID_TIMER_HANDLE if the timer can not be created
+     * @example
+     * ```lua
+     * A simple one-shot timer
+     * timer.delay(1, false, function() print("print in one second") end)
+     *
+     * Repetitive timer which canceled after 10 calls
+     * local function call_every_second(self, handle, time_elapsed)
+     *   self.counter = self.counter + 1
+     *   print("Call #", self.counter)
+     *   if self.counter == 10 then
+     *     timer.cancel(handle) -- cancel timer after 10 calls
+     *   end
+     * end
+     *
+     * self.counter = 0
+     * timer.delay(1, true, call_every_second)
+     * ```
      */
     function delay(delay: number, repeating: boolean, callback: (self: unknown, handle: unknown, time_elapsed: unknown) => void): number;
     /**
@@ -44,6 +70,17 @@ declare global {
   number Time interval.
   `repeating`
   boolean true = repeat timer until cancel, false = one-shot timer.
+     * @example
+     * ```lua
+     * self.handle = timer.delay(1, true, function() print("print every second") end)
+     * ...
+     * local result = timer.get_info(self.handle)
+     * if not result then
+     *    print("the timer is already cancelled or complete")
+     * else
+     *    pprint(result) -- delay, time_remaining, repeating
+     * end
+     * ```
      */
     function get_info(handle: number): { time_remaining: number; delay: number; repeating: boolean } | unknown;
     /**
@@ -51,6 +88,15 @@ declare global {
      *
      * @param handle - the timer handle returned by timer.delay()
      * @returns if the timer was active, false if the timer is already cancelled / complete
+     * @example
+     * ```lua
+     * self.handle = timer.delay(1, true, function() print("print every second or manually by timer.trigger") end)
+     * ...
+     * local result = timer.trigger(self.handle)
+     * if not result then
+     *    print("the timer is already cancelled or complete")
+     * end
+     * ```
      */
     function trigger(handle: number): boolean;
   }

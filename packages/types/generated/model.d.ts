@@ -15,6 +15,11 @@ declare global {
      *
      * @param url - the model
      * @returns A table containing AABB of the model. If model has no meshes - return vmath.vector3(0,0,0) for min and max fields.
+     * @example
+     * ```lua
+     * model.get_aabb("#model") -> { min = vmath.vector3(-2.5, -3.0, 0), max = vmath.vector3(1.5, 5.5, 0) }
+     * model.get_aabb("#empty") -> { min = vmath.vector3(0, 0, 0), max = vmath.vector3(0, 0, 0) }
+     * ```
      */
     function get_aabb(url: string | Hash | Url): Record<string | number, unknown>;
     /**
@@ -26,6 +31,15 @@ declare global {
      * @param url - the model to query
      * @param bone_id - id of the corresponding bone
      * @returns id of the game object
+     * @example
+     * ```lua
+     * The following examples assumes that the model component has id "model".
+     * How to parent the game object of the calling script to the "right_hand" bone of the model in a player game object:
+     * function init(self)
+     *     local parent = model.get_go("player#model", "right_hand")
+     *     msg.post(".", "set_parent", {parent_id = parent})
+     * end
+     * ```
      */
     function get_go(url: string | Hash | Url, bone_id: string | Hash): Hash;
     /**
@@ -34,6 +48,10 @@ declare global {
      *
      * @param url - the model
      * @returns A table containing info about all AABB in the format
+     * @example
+     * ```lua
+     * model.get_mesh_aabb("#model") -> { hash("Sword") = { min = vmath.vector3(-0.5, -0.5, 0), max = vmath.vector3(0.5, 0.5, 0) }, hash("Shield") = { min = vmath.vector3(-0.5, -0.5, -0.5), max = vmath.vector3(0.5, 0.5, 0.5) } }
+     * ```
      */
     function get_mesh_aabb(url: string | Hash | Url): Record<string | number, unknown>;
     /**
@@ -42,6 +60,15 @@ declare global {
      * @param url - the model
      * @param mesh_id - the id of the mesh
      * @returns true if the mesh is visible, false otherwise
+     * @example
+     * ```lua
+     * function init(self)
+     *     if model.get_mesh_enabled("#model", "Sword") then
+     *        -- set properties specific for the sword
+     *        self.weapon_properties = game.data.weapons["Sword"]
+     *     end
+     * end
+     * ```
      */
     function get_mesh_enabled(url: string | Hash | Url, mesh_id: string | Hash | Url): boolean;
     /**
@@ -85,6 +112,27 @@ declare global {
   - constant `playback` - the playback mode for the animation.
   `sender`
   url The invoker of the callback: the model component.
+     * @example
+     * ```lua
+     * The following examples assumes that the model has id "model".
+     * How to play the "jump" animation followed by the "run" animation:
+     * local function anim_done(self, message_id, message, sender)
+     *   if message_id == hash("model_animation_done") then
+     *     if message.animation_id == hash("jump") then
+     *       -- open animation done, chain with "run"
+     *       local properties = { blend_duration = 0.2 }
+     *       model.play_anim(url, "run", go.PLAYBACK_LOOP_FORWARD, properties, anim_done)
+     *     end
+     *   end
+     * end
+     *
+     * function init(self)
+     *     local url = msg.url("#model")
+     *     local play_properties = { blend_duration = 0.1 }
+     *     -- first blend during 0.1 sec into the jump, then during 0.2 s into the run animation
+     *     model.play_anim(url, "jump", go.PLAYBACK_ONCE_FORWARD, play_properties, anim_done)
+     * end
+     * ```
      */
     function play_anim(url: string | Hash | Url, anim_id: string | Hash, playback: Opaque<"constant">, play_properties?: { blend_duration?: number; offset?: number; playback_rate?: number }, complete_function?: (self: unknown, message_id: unknown, message: unknown, sender: unknown) => void): void;
     /**
@@ -93,6 +141,13 @@ declare global {
      * @param url - the model
      * @param mesh_id - the id of the mesh
      * @param enabled - true if the mesh should be visible, false if it should be hideen
+     * @example
+     * ```lua
+     * function init(self)
+     *     model.set_mesh_enabled("#model", "Sword", false) -- hide the sword
+     *     model.set_mesh_enabled("#model", "Axe", true)    -- show the axe
+     * end
+     * ```
      */
     function set_mesh_enabled(url: string | Hash | Url, mesh_id: string | Hash | Url, enabled: boolean): void;
     interface properties {

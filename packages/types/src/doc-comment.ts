@@ -47,6 +47,27 @@ export function htmlToDocText(html: string): string {
   return text.split("*/").join("*\\/");
 }
 
+/**
+ * Convert a syntax-highlighted ref-doc code fragment (the `examples` field's
+ * `<div class="codehilite">…</div>` markup) to plain source. Unlike
+ * `htmlToDocText` this preserves line structure and indentation — collapsing or
+ * trimming per line would make the sample unreadable — stripping only highlight
+ * markup, per-line trailing whitespace, and surrounding blank lines, and folding
+ * runs of blank lines to one. Returns `""` for empty / whitespace-only input.
+ */
+export function htmlToCodeText(html: string): string {
+  let text = html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+  text = decodeEntities(text);
+
+  const lines = text.split("\n").map((line) => line.replace(/[ \t]+$/g, ""));
+  while (lines.length > 0 && lines[0] === "") lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  const collapsed = lines.join("\n").replace(/\n{3,}/g, "\n\n");
+
+  // A literal `*/` inside sample code would close the JSDoc comment early.
+  return collapsed.split("*/").join("*\\/");
+}
+
 export interface DocCommentParts {
   summary: string;
   params?: { name: string; doc: string }[];
@@ -62,8 +83,9 @@ export function renderDocComment(parts: DocCommentParts): string[] {
   const summaryLines = parts.summary.trim() === "" ? [] : parts.summary.split("\n");
   const params = (parts.params ?? []).filter((p) => p.doc.trim() !== "");
   const returns = parts.returns?.trim() ? parts.returns : "";
+  const example = parts.example?.trim() ? parts.example : "";
 
-  if (summaryLines.length === 0 && params.length === 0 && returns === "") {
+  if (summaryLines.length === 0 && params.length === 0 && returns === "" && example === "") {
     return [];
   }
 
@@ -72,7 +94,7 @@ export function renderDocComment(parts: DocCommentParts): string[] {
     lines.push(` * ${line}`);
   }
 
-  const hasTags = params.length > 0 || returns !== "";
+  const hasTags = params.length > 0 || returns !== "" || example !== "";
   if (summaryLines.length > 0 && hasTags) {
     lines.push(" *");
   }
@@ -82,6 +104,14 @@ export function renderDocComment(parts: DocCommentParts): string[] {
   }
   if (returns !== "") {
     lines.push(` * @returns ${returns}`);
+  }
+  if (example !== "") {
+    lines.push(" * @example");
+    lines.push(" * ```lua");
+    for (const line of example.split("\n")) {
+      lines.push(line === "" ? " *" : ` * ${line}`);
+    }
+    lines.push(" * ```");
   }
 
   lines.push(" */");

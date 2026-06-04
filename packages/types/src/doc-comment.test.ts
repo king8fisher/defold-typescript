@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { htmlToDocText, renderDocComment } from "./doc-comment";
+import { htmlToCodeText, htmlToDocText, renderDocComment } from "./doc-comment";
 
 describe("htmlToDocText", () => {
   test("returns plain text unchanged", () => {
@@ -43,6 +43,32 @@ describe("htmlToDocText", () => {
   test("empty / whitespace-only input returns empty string", () => {
     expect(htmlToDocText("")).toBe("");
     expect(htmlToDocText("   \n\t ")).toBe("");
+  });
+});
+
+describe("htmlToCodeText", () => {
+  test("strips syntax-highlight spans while preserving newlines and indentation", () => {
+    const html =
+      '<div class="codehilite"><pre><span></span><code><span class="kd">local</span> <span class="n">p</span> <span class="o">=</span> <span class="n">go</span><span class="p">.</span><span class="n">get_position</span><span class="p">()</span>\n    <span class="n">indented</span>\n</code></pre></div>';
+    const out = htmlToCodeText(html);
+    expect(out).not.toContain("<span");
+    expect(out).not.toContain("class=");
+    expect(out).toBe("local p = go.get_position()\n    indented");
+  });
+
+  test("decodes HTML entities in code", () => {
+    expect(htmlToCodeText('<code><span class="s2">&quot;id&quot;</span></code>')).toBe('"id"');
+  });
+
+  test("a literal */ inside code is escaped", () => {
+    const out = htmlToCodeText("local x = a /* b */");
+    expect(out).not.toContain("*/");
+    expect(out).toBe("local x = a /* b *\\/");
+  });
+
+  test("empty / whitespace-only input returns empty string", () => {
+    expect(htmlToCodeText("")).toBe("");
+    expect(htmlToCodeText("   \n\t ")).toBe("");
   });
 });
 
@@ -100,6 +126,57 @@ describe("renderDocComment", () => {
       "/**",
       " * first",
       " * second",
+      " */",
+    ]);
+  });
+
+  test("an example emits an @example line, a ```lua fence, the body, and a closing fence", () => {
+    expect(
+      renderDocComment({ summary: "Does a thing.", example: "local x = 1\nlocal y = 2" }),
+    ).toEqual([
+      "/**",
+      " * Does a thing.",
+      " *",
+      " * @example",
+      " * ```lua",
+      " * local x = 1",
+      " * local y = 2",
+      " * ```",
+      " */",
+    ]);
+  });
+
+  test("example body blank lines render as a bare ` *`", () => {
+    expect(renderDocComment({ summary: "", example: "a\n\nb" })).toEqual([
+      "/**",
+      " * @example",
+      " * ```lua",
+      " * a",
+      " *",
+      " * b",
+      " * ```",
+      " */",
+    ]);
+  });
+
+  test("example follows @returns", () => {
+    expect(renderDocComment({ summary: "S.", returns: "r out", example: "call()" })).toEqual([
+      "/**",
+      " * S.",
+      " *",
+      " * @returns r out",
+      " * @example",
+      " * ```lua",
+      " * call()",
+      " * ```",
+      " */",
+    ]);
+  });
+
+  test("a blank example does not render an @example block", () => {
+    expect(renderDocComment({ summary: "Only.", example: "   " })).toEqual([
+      "/**",
+      " * Only.",
       " */",
     ]);
   });

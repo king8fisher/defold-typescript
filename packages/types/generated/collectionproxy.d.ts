@@ -26,6 +26,15 @@ declare global {
      * @param collectionproxy - the collectionproxy to check for resources.
      * @returns the resources, or an empty list if the
   collection was not excluded.
+     * @example
+     * ```lua
+     * local function print_resources(self, cproxy)
+     *     local resources = collectionproxy.get_resources(cproxy)
+     *     for _, v in ipairs(resources) do
+     *         print("Resource: " .. v)
+     *     end
+     * end
+     * ```
      */
     function get_resources(collectionproxy: Url): Record<string | number, unknown>;
     /**
@@ -36,6 +45,19 @@ declare global {
      *
      * @param url - the collection proxy component
      * @param prototype - the path to the new collection, or `nil`
+     * @example
+     * ```lua
+     * The example assume the script belongs to an instance with collection-proxy-component with id "proxy".
+     * local ok, error = collectionproxy.set_collection("/go#collectionproxy", "/LU/3.collectionc")
+     *  if ok then
+     *      print("The collection has been changed to /LU/3.collectionc")
+     *  else
+     *      print("Error changing collection to /LU/3.collectionc ", error)
+     *  end
+     *  msg.post("/go#collectionproxy", "load")
+     *  msg.post("/go#collectionproxy", "init")
+     *  msg.post("/go#collectionproxy", "enable")
+     * ```
      */
     function set_collection(url?: string | Hash | Url, prototype?: string): LuaMultiReturn<[boolean, number]>;
   }
