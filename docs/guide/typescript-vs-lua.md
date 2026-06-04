@@ -98,8 +98,8 @@ src/main.ts   →   src/main.ts.script
 `src/main.ts.script` is the transpiled Lua chunk. Defold resolves a resource by
 the extension after its last dot, so a `.ts.script` file is a valid `.script`
 component the engine loads directly — the `.ts` in the name only marks its
-TypeScript origin. Run `defold-typescript build` once or `defold-typescript
-watch` to keep it current.
+TypeScript origin. Run `bunx @defold-typescript/cli build` once or
+`bunx @defold-typescript/cli watch` to keep it current.
 
 Lua scripts attach behaviour by defining bare global callbacks (`function
 init(self)`, `function on_input(self, action_id, action)`). In TypeScript you

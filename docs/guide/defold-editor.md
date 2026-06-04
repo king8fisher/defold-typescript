@@ -8,7 +8,7 @@ Install the Defold editor from [defold.com](https://defold.com/). The editor is 
 2. Choose **Open Project**.
 3. Select the folder that contains `game.project`.
 
-For a project created with `bunx @defold-typescript/cli init`, that is the same folder where you run the CLI commands.
+For a project created with `bunx @defold-typescript/cli@latest init`, that is the same folder where you run the CLI commands.
 
 ## Build before running
 
@@ -22,4 +22,4 @@ By default the scaffolded `tsconfig.json` has no `outDir`, so the transpiled scr
 
 ## Run the game
 
-With the project open in Defold, press **Build** or **Project > Build** to run the game. If you change TypeScript code, rebuild with `defold-typescript` before running again, or keep `watch` running in a terminal.
+With the project open in Defold, press **Build** or **Project > Build** to run the game. If you change TypeScript code, rebuild with `bunx @defold-typescript/cli build` before running again, or keep `watch` running in a terminal.

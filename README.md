@@ -42,7 +42,7 @@ bun test
 
 ## Documentation
 
-End-user documentation lives in [docs/guide/README.md](docs/guide/README.md): getting started with `defold-typescript init`/`build`/`watch`, the typed vector-math surface, and a growing catalog of TypeScript-in-Defold gotchas (starting with the unary-minus quirk on `Vector3`/`Vector4`).
+End-user documentation lives in [docs/guide/README.md](docs/guide/README.md): getting started with `bunx @defold-typescript/cli init`/`build`/`watch`, the typed vector-math surface, and a growing catalog of TypeScript-in-Defold gotchas (starting with the unary-minus quirk on `Vector3`/`Vector4`).
 
 ## License
 

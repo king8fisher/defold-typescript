@@ -54,7 +54,7 @@ not in editor metadata. You declare it in `package.json` under the
 }
 ```
 
-`defold-typescript init` seeds this key with the current-stable version when it
+`bunx @defold-typescript/cli init` seeds this key with the current-stable version when it
 creates or augments a `package.json`, and leaves an existing pin untouched.
 
 The active version resolves with this precedence:
@@ -72,7 +72,7 @@ example `defold-1.9.8`); a version with no matching target reports
 
 ## Materializing the pinned surface
 
-`defold-typescript build` does not only report the surface — it **materializes**
+`bunx @defold-typescript/cli build` does not only report the surface — it **materializes**
 it. The build writes a project-local `.defold-types/<surface>/` directory (a faux
 `@types` package with its own `index.d.ts` and `package.json`), then repoints
 `tsconfig.json` at it so exactly one surface is the active ambient type surface:

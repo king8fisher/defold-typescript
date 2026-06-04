@@ -52,7 +52,7 @@ describe("docs/guide scaffold", () => {
     const f = Bun.file(resolve(GUIDE, "editor-setup.md"));
     expect(await f.exists()).toBe(true);
     const body = await readGuide("editor-setup.md");
-    expect(body).toContain("defold-typescript watch");
+    expect(body).toContain("bunx @defold-typescript/cli watch");
   });
 
   test("docs/guide/script-lifecycle.md exists", async () => {

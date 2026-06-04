@@ -54,7 +54,7 @@ The two variants mirror the two self-typing idioms (see [Script lifecycle](scrip
 An expanded snippet emits every lifecycle hook the installed `@defold-typescript/types` declares. If your editor reports `<hook> does not exist in type 'ScriptHooks'` (and the parameters of that method turn implicitly `any`), work through it in this order:
 
 1. **Restart the TypeScript server first.** A stale language-server process keeps the old type surface in memory after a dependency upgrade, so the error survives even once the right types are on disk. In VS Code, run *TypeScript: Restart TS Server* from the command palette. This clears most false positives.
-2. **Then check the types version.** `fixed_update` and `late_update` need `@defold-typescript/types >= 0.5.0`; a project whose resolved types lag the CLI that wrote the snippets genuinely lacks those hooks. Upgrade the dependency. `defold-typescript init --force` repins the managed `@defold-typescript/types` dependency to the CLI's own version.
+2. **Then check the types version.** `fixed_update` and `late_update` need `@defold-typescript/types >= 0.5.0`; a project whose resolved types lag the CLI that wrote the snippets genuinely lacks those hooks. Upgrade the dependency. `bunx @defold-typescript/cli@latest init --force` repins the managed `@defold-typescript/types` dependency to the CLI's own version.
 
 Edit TypeScript under `src/`. Treat the generated `.ts.script` and `.ts.script.map` files next to your sources as build output; the scaffolded `.gitignore` keeps them out of version control.
 
@@ -66,4 +66,4 @@ Keep Defold open on the same project folder. In the editor's integrated terminal
 bunx @defold-typescript/cli watch
 ```
 
-`defold-typescript watch` rebuilds Lua when files under `src/` change. Run the game from the Defold editor after the rebuild completes.
+`bunx @defold-typescript/cli watch` rebuilds Lua when files under `src/` change. Run the game from the Defold editor after the rebuild completes.

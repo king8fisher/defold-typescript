@@ -1,11 +1,17 @@
 # Add TypeScript to an existing Defold project
 
-Use `defold-typescript init` inside a Defold project that already has `game.project`.
+Use `bunx @defold-typescript/cli@latest init` inside a Defold project that already has `game.project`.
 
 ```sh
 cd my-existing-defold-game
-bunx @defold-typescript/cli init
+bunx @defold-typescript/cli@latest init
+bun install
 ```
+
+Scaffold with the `@latest` tag: `init` writes your `@defold-typescript/types`
+version pin, so a stale `bunx` cache would pin an older release. Then run
+`bun install` once — `init` only declares the dev dependencies below; `install`
+is what puts them in `node_modules` so the editor can resolve the Defold types.
 
 The package is scoped — run it as `@defold-typescript/cli`. The bare
 `bunx defold-typescript` resolves a nonexistent unscoped package and 404s unless

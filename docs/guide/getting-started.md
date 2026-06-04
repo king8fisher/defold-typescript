@@ -19,8 +19,12 @@ You need Bun `>= 1.3`.
 The package is scoped, so run it through `bunx` by its full name — no install required:
 
 ```sh
-bunx @defold-typescript/cli init
+bunx @defold-typescript/cli@latest init
 ```
+
+Use the `@latest` tag when you scaffold: `bunx` caches binaries, and `init` is
+what writes your `@defold-typescript/types` version pin, so a stale cache would
+pin an older release. `@latest` always scaffolds against the current version.
 
 `bunx defold-typescript` (without the `@defold-typescript/` scope) resolves a
 different, nonexistent package and fails with a registry 404. If you prefer the
@@ -41,20 +45,21 @@ bunx @defold-typescript/cli --version
 
 ```sh
 mkdir my-game && cd my-game
-bunx @defold-typescript/cli init
+bunx @defold-typescript/cli@latest init
+bun install
 ```
 
 `init` writes a minimal Defold project (`game.project`, `main/main.collection`, `main/main.script`) alongside a TypeScript surface (`src/main.ts`, `tsconfig.json`, `package.json`). The Defold files are real engine inputs; the TypeScript files are what you edit.
 
-The scaffold also ships an opinionated `biome.json` and adds `@biomejs/biome` to your `devDependencies`, so the project lints and formats cleanly out of the box. An existing `biome.json` is left untouched.
+Run `bun install` once after `init`. The scaffold only declares its
+`devDependencies` (`@defold-typescript/types` for the editor's ambient Defold
+types, `@biomejs/biome` for lint and format) — `install` is what actually puts
+them in `node_modules`. Skip it and your editor reports the Defold globals as
+unresolved.
 
-If the scaffolded `@defold-typescript/types` pin looks older than the CLI you expect, you are running a stale `bunx` binary, not hitting a bug — the pin always matches the CLI's own version. Force the current release with an explicit `@latest`:
+The scaffold also ships an opinionated `biome.json`, so the project lints and formats cleanly out of the box. An existing `biome.json` is left untouched.
 
-```sh
-bunx @defold-typescript/cli@latest init
-```
-
-This is more reliable than clearing the cache with `bun pm cache rm`.
+If the scaffolded `@defold-typescript/types` pin still looks older than the CLI you expect, your `bunx` cache is stale — `@latest` above already forces the current release, which is more reliable than clearing the cache with `bun pm cache rm`.
 
 ## Write a script
 
