@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const repoRoot = join(import.meta.dir, "..");
@@ -37,6 +37,8 @@ function scan(needles: string[]): string[] {
   const offenders: string[] = [];
   for (const file of trackedFiles()) {
     if (file === SELF || file === GITIGNORE) continue;
+    // A submodule is tracked as a directory gitlink; readFileSync would EISDIR.
+    if (!statSync(join(repoRoot, file)).isFile()) continue;
     const buf = readFileSync(join(repoRoot, file));
     if (isBinary(buf)) continue;
     const text = buf.toString("utf8");
@@ -69,5 +71,19 @@ describe("no secret-sauce leak", () => {
 
   test("no tracked file links to the planning doc homes", () => {
     expect(scan(PATH_LINKS)).toEqual([]);
+  });
+
+  test("scan tolerates a tracked submodule gitlink", () => {
+    expect(() => scan(LEAK_TOKENS)).not.toThrow();
+    expect(() => scan(PATH_LINKS)).not.toThrow();
+    expect(scan(LEAK_TOKENS)).toEqual([]);
+    expect(scan(PATH_LINKS)).toEqual([]);
+  });
+
+  test("the vendored submodule is tracked yet contributes no offender", () => {
+    const tracked = trackedFiles();
+    expect(tracked).toContain("vendor/template-platformer");
+    const offenders = [...scan(LEAK_TOKENS), ...scan(PATH_LINKS)];
+    expect(offenders.filter((o) => o.startsWith("vendor/template-platformer"))).toEqual([]);
   });
 });
