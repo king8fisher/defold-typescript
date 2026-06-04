@@ -72,6 +72,15 @@ const BIOME_JSON_CONTENT = {
   },
 };
 
+const VSCODE_EXTENSIONS_CONTENT = {
+  recommendations: ["sumneko.lua", "astrochili.defold"],
+  unwantedRecommendations: ["johnnymorganz.luau-lsp"],
+};
+
+const VSCODE_SETTINGS_CONTENT = {
+  "Lua.workspace.ignoreDir": ["src"],
+};
+
 const MAIN_TS_CONTENT = `export function init(): void {
   const start = vmath.vector3(0, 0, 0);
   msg.post("main:/hero", "spawn", { start });
@@ -172,6 +181,126 @@ function writeBiome(cwd: string, written: string[]): void {
   written.push("biome.json");
 }
 
+// Strip `//` line comments, `/* */` block comments, and trailing commas so a
+// hand-edited JSONC `.vscode` file parses with `JSON.parse`. The walk tracks
+// string state so a `//` or comma inside a value (e.g. a URL) is preserved.
+function parseJsonc(text: string): unknown {
+  let out = "";
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (inLineComment) {
+      if (ch === "\n") {
+        inLineComment = false;
+        out += ch;
+      }
+      continue;
+    }
+    if (inBlockComment) {
+      if (ch === "*" && next === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (inString) {
+      out += ch;
+      if (ch === "\\") {
+        out += next ?? "";
+        i++;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+    } else if (ch === "/" && next === "/") {
+      inLineComment = true;
+      i++;
+    } else if (ch === "/" && next === "*") {
+      inBlockComment = true;
+      i++;
+    } else {
+      out += ch;
+    }
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function unionStrings(existing: unknown, additions: readonly string[]): string[] {
+  const out = Array.isArray(existing)
+    ? existing.filter((v): v is string => typeof v === "string")
+    : [];
+  for (const value of additions) {
+    if (!out.includes(value)) {
+      out.push(value);
+    }
+  }
+  return out;
+}
+
+function readVscodeJson(filePath: string): Record<string, unknown> | null {
+  try {
+    const parsed = parseJsonc(readFileSync(filePath, "utf8"));
+    return isJsonObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeVscodeExtensions(cwd: string, written: string[]): void {
+  const dir = path.join(cwd, ".vscode");
+  const filePath = path.join(dir, "extensions.json");
+  if (existsSync(filePath)) {
+    const existing = readVscodeJson(filePath);
+    if (existing === null) {
+      return;
+    }
+    existing.recommendations = unionStrings(
+      existing.recommendations,
+      VSCODE_EXTENSIONS_CONTENT.recommendations,
+    );
+    existing.unwantedRecommendations = unionStrings(
+      existing.unwantedRecommendations,
+      VSCODE_EXTENSIONS_CONTENT.unwantedRecommendations,
+    );
+    writeJson(filePath, existing);
+    return;
+  }
+  mkdirSync(dir, { recursive: true });
+  writeJson(filePath, VSCODE_EXTENSIONS_CONTENT);
+  written.push(".vscode/extensions.json");
+}
+
+function writeVscodeSettings(cwd: string, written: string[]): void {
+  const dir = path.join(cwd, ".vscode");
+  const filePath = path.join(dir, "settings.json");
+  if (existsSync(filePath)) {
+    const existing = readVscodeJson(filePath);
+    if (existing === null) {
+      return;
+    }
+    existing["Lua.workspace.ignoreDir"] = unionStrings(
+      existing["Lua.workspace.ignoreDir"],
+      VSCODE_SETTINGS_CONTENT["Lua.workspace.ignoreDir"],
+    );
+    writeJson(filePath, existing);
+    return;
+  }
+  mkdirSync(dir, { recursive: true });
+  writeJson(filePath, VSCODE_SETTINGS_CONTENT);
+  written.push(".vscode/settings.json");
+}
+
 function writeTsSurface(cwd: string, written: string[], force = false): ScriptKind | null {
   mkdirSync(path.join(cwd, "src"), { recursive: true });
   writeFileSync(path.join(cwd, "src", "main.ts"), MAIN_TS_CONTENT);
@@ -217,6 +346,9 @@ function writeTsSurface(cwd: string, written: string[], force = false): ScriptKi
   written.push(".gitignore");
 
   writeBiome(cwd, written);
+
+  writeVscodeExtensions(cwd, written);
+  writeVscodeSettings(cwd, written);
 
   return selectScriptKind(kinds);
 }

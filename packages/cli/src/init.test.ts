@@ -41,7 +41,15 @@ describe("runInit (add-TS mode)", () => {
     const result = runInit({ cwd });
 
     expect(result.written.sort()).toEqual(
-      [".gitignore", "biome.json", "package.json", "src/main.ts", "tsconfig.json"].sort(),
+      [
+        ".gitignore",
+        ".vscode/extensions.json",
+        ".vscode/settings.json",
+        "biome.json",
+        "package.json",
+        "src/main.ts",
+        "tsconfig.json",
+      ].sort(),
     );
     expect(existsSync(path.join(cwd, "src", "main.ts"))).toBe(true);
     expect(existsSync(path.join(cwd, "tsconfig.json"))).toBe(true);
@@ -72,7 +80,15 @@ describe("runInit (add-TS mode)", () => {
     const result = runInit({ cwd, force: true });
 
     expect(result.written.sort()).toEqual(
-      [".gitignore", "biome.json", "package.json", "src/main.ts", "tsconfig.json"].sort(),
+      [
+        ".gitignore",
+        ".vscode/extensions.json",
+        ".vscode/settings.json",
+        "biome.json",
+        "package.json",
+        "src/main.ts",
+        "tsconfig.json",
+      ].sort(),
     );
     const tsconfig = JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8"));
     expect(tsconfig.compilerOptions.types).toContain("@defold-typescript/types");
@@ -285,6 +301,8 @@ describe("runInit (new-project mode)", () => {
     "package.json",
     ".gitignore",
     "biome.json",
+    ".vscode/extensions.json",
+    ".vscode/settings.json",
   ];
 
   test("missing target directory: creates the directory and writes the scaffold files", () => {
@@ -477,5 +495,98 @@ describe("runInit (biome scaffold)", () => {
 
     expect(readFileSync(path.join(cwd, "biome.json"), "utf8")).toBe(sentinel);
     expect(result.written).not.toContain("biome.json");
+  });
+});
+
+describe("runInit (.vscode editor config)", () => {
+  function readJson(rel: string): Record<string, unknown> {
+    return JSON.parse(readFileSync(path.join(cwd, rel), "utf8"));
+  }
+
+  test("new-project mode recommends sumneko + Defold Kit and marks Luau LSP unwanted", () => {
+    runInit({ cwd });
+
+    const ext = readJson(".vscode/extensions.json");
+    expect(ext.recommendations).toContain("sumneko.lua");
+    expect(ext.recommendations).toContain("astrochili.defold");
+    expect(ext.unwantedRecommendations).toContain("johnnymorganz.luau-lsp");
+  });
+
+  test("new-project mode ignores the generated Lua dir in settings.json", () => {
+    runInit({ cwd });
+
+    const settings = readJson(".vscode/settings.json");
+    expect(settings["Lua.workspace.ignoreDir"]).toContain("src");
+  });
+
+  test("add-TS mode also writes both .vscode files", () => {
+    touch("game.project", "[project]\n");
+
+    runInit({ cwd });
+
+    expect(existsSync(path.join(cwd, ".vscode", "extensions.json"))).toBe(true);
+    expect(existsSync(path.join(cwd, ".vscode", "settings.json"))).toBe(true);
+  });
+
+  test("merges into an existing extensions.json, preserving user entries and keys", () => {
+    touch("game.project", "[project]\n");
+    mkdirSync(path.join(cwd, ".vscode"), { recursive: true });
+    touch(
+      ".vscode/extensions.json",
+      `${JSON.stringify(
+        { recommendations: ["dbaeumer.vscode-eslint"], someOtherKey: 42 },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const result = runInit({ cwd });
+
+    const ext = readJson(".vscode/extensions.json");
+    expect(ext.recommendations).toContain("dbaeumer.vscode-eslint");
+    expect(ext.recommendations).toContain("sumneko.lua");
+    expect(ext.recommendations).toContain("astrochili.defold");
+    expect(ext.someOtherKey).toBe(42);
+    const recs = ext.recommendations as string[];
+    expect(recs.length).toBe(new Set(recs).size);
+    expect(result.written).not.toContain(".vscode/extensions.json");
+  });
+
+  test("merges into a JSONC settings.json with comments, keeping unrelated settings", () => {
+    touch("game.project", "[project]\n");
+    mkdirSync(path.join(cwd, ".vscode"), { recursive: true });
+    touch(".vscode/settings.json", '{\n  // user preference\n  "editor.tabSize": 4,\n}\n');
+
+    expect(() => runInit({ cwd })).not.toThrow();
+
+    const settings = readJson(".vscode/settings.json");
+    expect(settings["editor.tabSize"]).toBe(4);
+    expect(settings["Lua.workspace.ignoreDir"]).toContain("src");
+  });
+
+  test("does not add a second src entry when ignoreDir already lists it", () => {
+    touch("game.project", "[project]\n");
+    mkdirSync(path.join(cwd, ".vscode"), { recursive: true });
+    touch(
+      ".vscode/settings.json",
+      `${JSON.stringify({ "Lua.workspace.ignoreDir": ["src", "build"] }, null, 2)}\n`,
+    );
+
+    runInit({ cwd });
+
+    const dirs = readJson(".vscode/settings.json")["Lua.workspace.ignoreDir"] as string[];
+    expect(dirs.filter((d) => d === "src").length).toBe(1);
+    expect(dirs).toContain("build");
+  });
+
+  test("leaves an unparseable extensions.json untouched", () => {
+    touch("game.project", "[project]\n");
+    mkdirSync(path.join(cwd, ".vscode"), { recursive: true });
+    const garbage = "this is not json at all {{{\n";
+    touch(".vscode/extensions.json", garbage);
+
+    runInit({ cwd });
+
+    expect(readFileSync(path.join(cwd, ".vscode", "extensions.json"), "utf8")).toBe(garbage);
   });
 });
