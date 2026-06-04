@@ -132,6 +132,27 @@ describe("parseDefoldApiDoc", () => {
     expect(module.properties[0]?.types).toEqual([]);
   });
 
+  test('parseFunction populates examples from the element\'s examples field; missing yields ""', () => {
+    const doc = {
+      info: { namespace: "ns" },
+      elements: [
+        {
+          type: "FUNCTION",
+          name: "ns.with_example",
+          parameters: [],
+          returnvalues: [],
+          examples: "local x = ns.with_example()",
+        },
+        { type: "FUNCTION", name: "ns.no_example", parameters: [], returnvalues: [] },
+      ],
+    };
+    const module = parseDefoldApiDoc(doc);
+    const withExample = module.functions.find((fn) => fn.name === "ns.with_example");
+    const noExample = module.functions.find((fn) => fn.name === "ns.no_example");
+    expect(withExample?.examples).toBe("local x = ns.with_example()");
+    expect(noExample?.examples).toBe("");
+  });
+
   test("every parsed ApiFunction has non-undefined name/parameters/returnValues", () => {
     const module = parseDefoldApiDoc(vmathDoc);
     expect(module.functions.length).toBeGreaterThan(0);

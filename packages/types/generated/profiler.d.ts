@@ -29,6 +29,11 @@ declare global {
     const VIEW_MODE_MINIMIZED: number & { readonly __brand: "profiler.VIEW_MODE_MINIMIZED" };
     /**
      * logs the current frame to the console
+     *
+     * @example
+     * ```lua
+     * profiler.dump_frame()
+     * ```
      */
     function dump_frame(): void;
     /**
@@ -37,6 +42,11 @@ declare global {
      * tracking down performance and resource problems.
      *
      * @param enabled - true to enable, false to disable
+     * @example
+     * ```lua
+     * -- Show the profiler UI
+     * profiler.enable(true)
+     * ```
      */
     function enable(enabled: boolean): void;
     /**
@@ -46,6 +56,11 @@ declare global {
      * tracking down performance and resource problems.
      *
      * @param enabled - true to enable, false to disable
+     * @example
+     * ```lua
+     * -- Show the profiler UI
+     * profiler.enable_ui(true)
+     * ```
      */
     function enable_ui(enabled: boolean): void;
     /**
@@ -76,24 +91,49 @@ declare global {
      * Not available
      *
      * @returns used by the application
+     * @example
+     * ```lua
+     * Get memory usage before and after loading a collection:
+     * print(profiler.get_memory_usage())
+     * msg.post("#collectionproxy", "load")
+     * ...
+     * print(profiler.get_memory_usage()) -- will report a higher number than the initial call
+     * ```
      */
     function get_memory_usage(): number;
     /**
      * Send a text to the connected profiler
      *
      * @param text - the string to send to the connected profiler
+     * @example
+     * ```lua
+     * profiler.log_text("Event: " .. name)
+     * ```
      */
     function log_text(text: string): void;
     /**
      * Get the number of recorded frames in the on-screen profiler ui recording buffer
      *
      * @returns the number of recorded frames, zero if on-screen profiler is disabled
+     * @example
+     * ```lua
+     * -- Show the last recorded frame
+     * local recorded_frame_count = profiler.recorded_frame_count()
+     * profiler.view_recorded_frame(recorded_frame_count)
+     * ```
      */
     function recorded_frame_count(): number;
     /**
      * Starts a profile scope.
      *
      * @param name - The name of the scope
+     * @example
+     * ```lua
+     * -- Go back one frame
+     * profiler.scope_begin("test_function")
+     *   test_function()
+     * profiler.scope_end()
+     * ```
      */
     function scope_begin(name: string): void;
     /**
@@ -111,6 +151,16 @@ declare global {
   To stop recording, switch to a different mode such as `MODE_PAUSE` or `MODE_RUN`.
   You can also use the `view_recorded_frame` function to display a recorded frame. Doing so stops the recording as well.
   Every time you switch to recording mode the recording buffer is cleared.
+     * @example
+     * ```lua
+     * function start_recording()
+     *      profiler.set_ui_mode(profiler.MODE_RECORD)
+     * end
+     *
+     * function stop_recording()
+     *      profiler.set_ui_mode(profiler.MODE_PAUSE)
+     * end
+     * ```
      */
     function set_ui_mode(mode: Opaque<"constant">): void;
     /**
@@ -119,6 +169,11 @@ declare global {
      * @param mode - the view mode to set the ui profiler in
   - `profiler.VIEW_MODE_FULL` The default mode which displays all the ui profiler details
   - `profiler.VIEW_MODE_MINIMIZED` Minimized mode which only shows the top header (fps counters and ui profiler mode)
+     * @example
+     * ```lua
+     * -- Minimize the profiler view
+     * profiler.set_ui_view_mode(profiler.VIEW_MODE_MINIMIZED)
+     * ```
      */
     function set_ui_view_mode(mode: Opaque<"constant">): void;
     /**
@@ -134,6 +189,11 @@ declare global {
      * By default the vsync wait times is displayed in the profiler.
      *
      * @param visible - true to include it in the display, false to hide it.
+     * @example
+     * ```lua
+     * -- Exclude frame wait time form the profiler ui
+     * profiler.set_ui_vsync_wait_visible(false)
+     * ```
      */
     function set_ui_vsync_wait_visible(visible: boolean): void;
     /**
@@ -143,6 +203,11 @@ declare global {
      * @param frame_index - a table where you specify one of the following parameters:
   - `distance` The offset from the currently displayed frame (this is truncated between zero and the number of recorded frames)
   - `frame` The frame index in the recording buffer (1 is first recorded frame)
+     * @example
+     * ```lua
+     * -- Go back one frame
+     * profiler.view_recorded_frame({distance = -1})
+     * ```
      */
     function view_recorded_frame(frame_index: Record<string | number, unknown>): void;
   }

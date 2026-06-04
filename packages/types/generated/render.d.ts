@@ -29,6 +29,11 @@ declare global {
   - `graphics.BUFFER_TYPE_COLOR0_BIT`
   - `graphics.BUFFER_TYPE_DEPTH_BIT`
   - `graphics.BUFFER_TYPE_STENCIL_BIT`
+     * @example
+     * ```lua
+     * Clear the color buffer and the depth buffer.
+     * render.clear({[graphics.BUFFER_TYPE_COLOR0_BIT] = vmath.vector4(0, 0, 0, 0), [graphics.BUFFER_TYPE_DEPTH_BIT] = 1})
+     * ```
      */
     function clear(buffers: Record<string | number, unknown>): void;
     /**
@@ -36,6 +41,33 @@ declare global {
      * The buffer's constant elements can be indexed like an ordinary Lua table, but you can't iterate over them with pairs() or ipairs().
      *
      * @returns new constant buffer
+     * @example
+     * ```lua
+     * Set a "tint" constant in a constant buffer in the render script:
+     * local constants = render.constant_buffer()
+     * constants.tint = vmath.vector4(1, 1, 1, 1)
+     *
+     * Then use the constant buffer when drawing a predicate:
+     * render.draw(self.my_pred, {constants = constants})
+     *
+     * The constant buffer also supports array values by specifying constants in a table:
+     * local constants = render.constant_buffer()
+     * constants.light_colors    = {}
+     * constants.light_colors[1] = vmath.vector4(1, 0, 0, 1)
+     * constants.light_colors[2] = vmath.vector4(0, 1, 0, 1)
+     * constants.light_colors[3] = vmath.vector4(0, 0, 1, 1)
+     *
+     * You can also create the table by passing the vectors directly when creating the table:
+     * local constants = render.constant_buffer()
+     * constants.light_colors    = {
+     *      vmath.vector4(1, 0, 0, 1)
+     *      vmath.vector4(0, 1, 0, 1)
+     *      vmath.vector4(0, 0, 1, 1)
+     * }
+     *
+     * -- Add more constant to the array
+     * constants.light_colors[4] = vmath.vector4(1, 1, 1, 1)
+     * ```
      */
     function constant_buffer(): Opaque<"constant_buffer">;
     /**
@@ -43,12 +75,25 @@ declare global {
      * You cannot delete a render target resource.
      *
      * @param render_target - render target to delete
+     * @example
+     * ```lua
+     * How to delete a render target:
+     *  render.delete_render_target(self.my_render_target)
+     * ```
      */
     function delete_render_target(render_target: Opaque<"render_target">): void;
     /**
      * If a material is currently enabled, disable it.
      * The name of the material must be specified in the ".render" resource set
      * in the "game.project" setting.
+     *
+     * @example
+     * ```lua
+     * Enable material named "glow", then draw my_pred with it.
+     * render.enable_material("glow")
+     * render.draw(self.my_pred)
+     * render.disable_material()
+     * ```
      */
     function disable_material(): void;
     /**
@@ -61,12 +106,29 @@ declare global {
   - `graphics.STATE_ALPHA_TEST` ( not available on iOS and Android)
   - `graphics.STATE_CULL_FACE`
   - `graphics.STATE_POLYGON_OFFSET_FILL`
+     * @example
+     * ```lua
+     * Disable face culling when drawing the tile predicate:
+     * render.disable_state(graphics.STATE_CULL_FACE)
+     * render.draw(self.tile_pred)
+     * ```
      */
     function disable_state(state: Opaque<"constant">): void;
     /**
      * Disables a texture that has previourly been enabled.
      *
      * @param binding - texture binding, either by texture unit, string or hash that should be disabled
+     * @example
+     * ```lua
+     * function update(self, dt)
+     *     render.enable_texture(0, self.my_render_target, graphics.BUFFER_TYPE_COLOR0_BIT)
+     *     -- draw a predicate with the render target available as texture 0 in the predicate
+     *     -- material shader.
+     *     render.draw(self.my_pred)
+     *     -- done, disable the texture
+     *     render.disable_texture(0)
+     * end
+     * ```
      */
     function disable_texture(binding: Opaque<"texture"> | string | Hash): void;
     /**
@@ -82,6 +144,28 @@ declare global {
      * @param options - optional table with properties:
   `constants`
   constant_buffer optional constants to use while rendering
+     * @example
+     * ```lua
+     * function init(self)
+     *     local color_params = { format = graphics.TEXTURE_FORMAT_RGBA,
+     *                            width = render.get_window_width(),
+     *                            height = render.get_window_height()}
+     *     self.scene_rt = render.render_target({[graphics.BUFFER_TYPE_COLOR0_BIT] = color_params})
+     * end
+     *
+     * function update(self, dt)
+     *     render.set_compute("bloom")
+     *     render.enable_texture(0, self.backing_texture)
+     *     render.enable_texture(1, self.scene_rt)
+     *     render.dispatch_compute(128, 128, 1)
+     *     render.set_compute()
+     * end
+     *
+     * Dispatch a compute program with a constant buffer:
+     * local constants = render.constant_buffer()
+     * constants.tint = vmath.vector4(1, 1, 1, 1)
+     * render.dispatch_compute(32, 32, 32, {constants = constants})
+     * ```
      */
     function dispatch_compute(x: number, y: number, z: number, options?: { constants?: Opaque<"constant_buffer"> }): void;
     /**
@@ -102,6 +186,31 @@ declare global {
   constant_buffer optional constants to use while rendering
   `sort_order`
   int How to sort draw order for world-ordered entries. Default uses the renderer's preferred world sorting (back-to-front).
+     * @example
+     * ```lua
+     * function init(self)
+     *     -- define a predicate matching anything with material tag "my_tag"
+     *     self.my_pred = render.predicate({hash("my_tag")})
+     * end
+     *
+     * function update(self, dt)
+     *     -- draw everything in the my_pred predicate
+     *     render.draw(self.my_pred)
+     * end
+     *
+     * Draw predicate with constants:
+     * local constants = render.constant_buffer()
+     * constants.tint = vmath.vector4(1, 1, 1, 1)
+     * render.draw(self.my_pred, {constants = constants})
+     *
+     * Draw with predicate and frustum culling (without near+far planes):
+     * local frustum = self.proj * self.view
+     * render.draw(self.my_pred, {frustum = frustum})
+     *
+     * Draw with predicate and frustum culling (with near+far planes):
+     * local frustum = self.proj * self.view
+     * render.draw(self.my_pred, {frustum = frustum, frustum_planes = render.FRUSTUM_PLANES_ALL})
+     * ```
      */
     function draw(predicate: number, options?: { frustum?: Matrix4; frustum_planes?: number; constants?: Opaque<"constant_buffer">; sort_order?: number }): void;
     /**
@@ -114,6 +223,13 @@ declare global {
   int Determines which sides of the frustum will be used. Default is render.FRUSTUM_PLANES_SIDES.
   - render.FRUSTUM_PLANES_SIDES : The left, right, top and bottom sides of the frustum.
   - render.FRUSTUM_PLANES_ALL : All sides of the frustum.
+     * @example
+     * ```lua
+     * function update(self, dt)
+     *     -- draw debug visualization
+     *     render.draw_debug3d()
+     * end
+     * ```
      */
     function draw_debug3d(options?: { frustum?: Matrix4; frustum_planes?: number }): void;
     /**
@@ -123,6 +239,13 @@ declare global {
      * in the "game.project" setting.
      *
      * @param material_id - material id to enable
+     * @example
+     * ```lua
+     * Enable material named "glow", then draw my_pred with it.
+     * render.enable_material("glow")
+     * render.draw(self.my_pred)
+     * render.disable_material()
+     * ```
      */
     function enable_material(material_id: string | Hash): void;
     /**
@@ -135,6 +258,13 @@ declare global {
   - `graphics.STATE_ALPHA_TEST` ( not available on iOS and Android)
   - `graphics.STATE_CULL_FACE`
   - `graphics.STATE_POLYGON_OFFSET_FILL`
+     * @example
+     * ```lua
+     * Enable stencil test when drawing the gui predicate, then disable it:
+     * render.enable_state(graphics.STATE_STENCIL_TEST)
+     * render.draw(self.gui_pred)
+     * render.disable_state(graphics.STATE_STENCIL_TEST)
+     * ```
      */
     function enable_state(state: Opaque<"constant">): void;
     /**
@@ -163,6 +293,43 @@ declare global {
   - `graphics.BUFFER_TYPE_COLOR1_BIT`
   - `graphics.BUFFER_TYPE_COLOR2_BIT`
   - `graphics.BUFFER_TYPE_COLOR3_BIT`
+     * @example
+     * ```lua
+     * function update(self, dt)
+     *     -- enable target so all drawing is done to it
+     *     render.set_render_target(self.my_render_target)
+     *
+     *     -- draw a predicate to the render target
+     *     render.draw(self.my_pred)
+     *
+     *     -- disable target
+     *     render.set_render_target(render.RENDER_TARGET_DEFAULT)
+     *
+     *     render.enable_texture(0, self.my_render_target, graphics.BUFFER_TYPE_COLOR0_BIT)
+     *     -- draw a predicate with the render target available as texture 0 in the predicate
+     *     -- material shader.
+     *     render.draw(self.my_pred)
+     * end
+     *
+     * function update(self, dt)
+     *     -- enable render target by resource id
+     *     render.set_render_target('my_rt_resource')
+     *     render.draw(self.my_pred)
+     *     render.set_render_target(render.RENDER_TARGET_DEFAULT)
+     *
+     *     render.enable_texture(0, 'my_rt_resource', graphics.BUFFER_TYPE_COLOR0_BIT)
+     *     -- draw a predicate with the render target available as texture 0 in the predicate
+     *     -- material shader.
+     *     render.draw(self.my_pred)
+     * end
+     *
+     * function update(self, dt)
+     *     -- bind a texture to the texture unit 0
+     *     render.enable_texture(0, self.my_texture_handle)
+     *     -- bind the same texture to a named sampler
+     *     render.enable_texture("my_texture_sampler", self.my_texture_handle)
+     * end
+     * ```
      */
     function enable_texture(binding: number | string | Hash, handle_or_name: Opaque<"texture"> | string | Hash, buffer_type?: number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR0_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR1_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR2_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR3_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_DEPTH_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_STENCIL_BIT" }): void;
     /**
@@ -171,6 +338,11 @@ declare global {
      * or user input.
      *
      * @returns specified window height
+     * @example
+     * ```lua
+     * Get the height of the window
+     * local h = render.get_height()
+     * ```
      */
     function get_height(): number;
     /**
@@ -182,6 +354,13 @@ declare global {
   - `graphics.BUFFER_TYPE_DEPTH_BIT`
   - `graphics.BUFFER_TYPE_STENCIL_BIT`
      * @returns the height of the render target buffer texture
+     * @example
+     * ```lua
+     * -- get the height of the render target color buffer
+     * local h = render.get_render_target_height(self.target_right, graphics.BUFFER_TYPE_COLOR0_BIT)
+     * -- get the height of a render target resource
+     * local w = render.get_render_target_height('my_rt_resource', graphics.BUFFER_TYPE_COLOR0_BIT)
+     * ```
      */
     function get_render_target_height(render_target: Opaque<"render_target">, buffer_type: number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR0_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR1_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR2_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR3_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_DEPTH_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_STENCIL_BIT" }): number;
     /**
@@ -194,6 +373,13 @@ declare global {
   - `graphics.BUFFER_TYPE_DEPTH_BIT`
   - `graphics.BUFFER_TYPE_STENCIL_BIT`
      * @returns the width of the render target buffer texture
+     * @example
+     * ```lua
+     * -- get the width of the render target color buffer
+     * local w = render.get_render_target_width(self.target_right, graphics.BUFFER_TYPE_COLOR0_BIT)
+     * -- get the width of a render target resource
+     * local w = render.get_render_target_width('my_rt_resource', graphics.BUFFER_TYPE_COLOR0_BIT)
+     * ```
      */
     function get_render_target_width(render_target: Opaque<"render_target">, buffer_type: number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR0_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR1_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR2_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_COLOR3_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_DEPTH_BIT" } | number & { readonly __brand: "graphics.BUFFER_TYPE_STENCIL_BIT" }): number;
     /**
@@ -202,6 +388,11 @@ declare global {
      * or user input.
      *
      * @returns specified window width (number)
+     * @example
+     * ```lua
+     * Get the width of the window.
+     * local w = render.get_width()
+     * ```
      */
     function get_width(): number;
     /**
@@ -210,6 +401,11 @@ declare global {
      * "game.project" settings.
      *
      * @returns actual window height
+     * @example
+     * ```lua
+     * Get the actual height of the window
+     * local h = render.get_window_height()
+     * ```
      */
     function get_window_height(): number;
     /**
@@ -218,6 +414,11 @@ declare global {
      * "game.project" settings.
      *
      * @returns actual window width
+     * @example
+     * ```lua
+     * Get the actual width of the window
+     * local w = render.get_window_width()
+     * ```
      */
     function get_window_width(): number;
     /**
@@ -229,6 +430,12 @@ declare global {
      *
      * @param tags - table of tags that the predicate should match. The tags can be of either hash or string type
      * @returns new predicate
+     * @example
+     * ```lua
+     * Create a new render predicate containing all visual objects that
+     * have a material with material tags "opaque" AND "smoke".
+     * local p = render.predicate({hash("opaque"), hash("smoke")})
+     * ```
      */
     function predicate(tags: Record<string | number, unknown>): number;
     /**
@@ -284,6 +491,68 @@ declare global {
      * @param name - render target name
      * @param parameters - table of buffer parameters, see the description for available keys and values
      * @returns new render target
+     * @example
+     * ```lua
+     * How to create a new render target and draw to it:
+     * function init(self)
+     *     -- render target buffer parameters
+     *     local color_params = { format = graphics.TEXTURE_FORMAT_RGBA,
+     *                            width = render.get_window_width(),
+     *                            height = render.get_window_height(),
+     *                            min_filter = graphics.TEXTURE_FILTER_LINEAR,
+     *                            mag_filter = graphics.TEXTURE_FILTER_LINEAR,
+     *                            u_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE,
+     *                            v_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE }
+     *     local depth_params = { format = graphics.TEXTURE_FORMAT_DEPTH,
+     *                            width = render.get_window_width(),
+     *                            height = render.get_window_height(),
+     *                            u_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE,
+     *                            v_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE }
+     *     self.my_render_target = render.render_target({[graphics.BUFFER_TYPE_COLOR0_BIT] = color_params, [graphics.BUFFER_TYPE_DEPTH_BIT] = depth_params })
+     * end
+     *
+     * function update(self, dt)
+     *     -- enable target so all drawing is done to it
+     *     render.set_render_target(self.my_render_target)
+     *
+     *     -- draw a predicate to the render target
+     *     render.draw(self.my_pred)
+     * end
+     *
+     * How to create a render target with multiple outputs:
+     * function init(self)
+     *     -- render target buffer parameters
+     *     local color_params_rgba = { format = graphics.TEXTURE_FORMAT_RGBA,
+     *                                 width = render.get_window_width(),
+     *                                 height = render.get_window_height(),
+     *                                 min_filter = graphics.TEXTURE_FILTER_LINEAR,
+     *                                 mag_filter = graphics.TEXTURE_FILTER_LINEAR,
+     *                                 u_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE,
+     *                                 v_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE }
+     *     local color_params_float = { format = graphics.TEXTURE_FORMAT_RG32F,
+     *                            width = render.get_window_width(),
+     *                            height = render.get_window_height(),
+     *                            min_filter = graphics.TEXTURE_FILTER_LINEAR,
+     *                            mag_filter = graphics.TEXTURE_FILTER_LINEAR,
+     *                            u_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE,
+     *                            v_wrap = graphics.TEXTURE_WRAP_CLAMP_TO_EDGE }
+     *
+     *     -- Create a render target with three color attachments
+     *     -- Note: No depth buffer is attached here
+     *     self.my_render_target = render.render_target({
+     *            [graphics.BUFFER_TYPE_COLOR0_BIT] = color_params_rgba,
+     *            [graphics.BUFFER_TYPE_COLOR1_BIT] = color_params_rgba,
+     *            [graphics.BUFFER_TYPE_COLOR2_BIT] = color_params_float, })
+     * end
+     *
+     * function update(self, dt)
+     *     -- enable target so all drawing is done to it
+     *     render.enable_render_target(self.my_render_target)
+     *
+     *     -- draw a predicate to the render target
+     *     render.draw(self.my_pred)
+     * end
+     * ```
      */
     function render_target(name: string, parameters: Record<string | number, unknown>): Opaque<"render_target">;
     /**
@@ -344,6 +613,11 @@ declare global {
      *
      * @param source_factor - source factor
      * @param destination_factor - destination factor
+     * @example
+     * ```lua
+     * Set the blend func to the most common one:
+     * render.set_blend_func(graphics.BLEND_FACTOR_SRC_ALPHA, graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+     * ```
      */
     function set_blend_func(source_factor: number, destination_factor: number): void;
     /**
@@ -359,6 +633,20 @@ declare global {
      * @param options - optional table with properties:
   `use_frustum`
   boolean If true, the renderer will use the cameras view-projection matrix for frustum culling (default: false)
+     * @example
+     * ```lua
+     * Set the current camera to be used for rendering
+     * render.set_camera("main:/my_go#camera")
+     * render.draw(self.my_pred)
+     * render.set_camera(nil)
+     *
+     * Use the camera frustum for frustum culling together with a specific frustum plane option for the draw command
+     * -- The camera frustum will take precedence over the frustum plane option in render.draw
+     * render.set_camera("main:/my_go#camera", { use_frustum = true })
+     * -- However, we can still customize the frustum planes regardless of the camera option!
+     * render.draw(self.my_pred, { frustum_planes = render.FRUSTUM_PLANES_ALL })
+     * render.set_camera()
+     * ```
      */
     function set_camera(camera?: Url | number, options?: { use_frustum?: boolean }): void;
     /**
@@ -369,6 +657,11 @@ declare global {
      * @param green - green mask
      * @param blue - blue mask
      * @param alpha - alpha mask
+     * @example
+     * ```lua
+     * -- alpha cannot be written to frame buffer
+     * render.set_color_mask(true, true, true, false)
+     * ```
      */
     function set_color_mask(red: boolean, green: boolean, blue: boolean, alpha: boolean): void;
     /**
@@ -377,6 +670,14 @@ declare global {
      * the current compute program will instead be disabled.
      *
      * @param compute - compute id to use, or nil to disable
+     * @example
+     * ```lua
+     * Enable compute program named "fractals", then dispatch it.
+     * render.set_compute("fractals")
+     * render.enable_texture(0, self.backing_texture)
+     * render.dispatch_compute(128, 128, 1)
+     * render.set_compute()
+     * ```
      */
     function set_compute(compute?: string | Hash): void;
     /**
@@ -390,6 +691,12 @@ declare global {
   - `graphics.FACE_TYPE_FRONT`
   - `graphics.FACE_TYPE_BACK`
   - `graphics.FACE_TYPE_FRONT_AND_BACK`
+     * @example
+     * ```lua
+     * How to enable polygon culling and set front face culling:
+     * render.enable_state(graphics.STATE_CULL_FACE)
+     * render.set_cull_face(graphics.FACE_TYPE_FRONT)
+     * ```
      */
     function set_cull_face(face_type: number): void;
     /**
@@ -409,6 +716,12 @@ declare global {
      * The depth function is initially set to `graphics.COMPARE_FUNC_LESS`.
      *
      * @param func - depth test function, see the description for available values
+     * @example
+     * ```lua
+     * Enable depth test and set the depth test function to "not equal".
+     * render.enable_state(graphics.STATE_DEPTH_TEST)
+     * render.set_depth_func(graphics.COMPARE_FUNC_NOTEQUAL)
+     * ```
      */
     function set_depth_func(func: number): void;
     /**
@@ -417,6 +730,11 @@ declare global {
      * The mask is initially `true`.
      *
      * @param depth - depth mask
+     * @example
+     * ```lua
+     * How to turn off writing to the depth buffer:
+     * render.set_depth_mask(false)
+     * ```
      */
     function set_depth_mask(depth: boolean): void;
     /**
@@ -431,6 +749,20 @@ declare global {
   object The render script
   `event_type`
   string Rendering event. Possible values: `render.CONTEXT_EVENT_CONTEXT_LOST`, `render.CONTEXT_EVENT_CONTEXT_RESTORED`
+     * @example
+     * ```lua
+     * Set listener and handle render context events.
+     * --- custom.render_script
+     * function init(self)
+     *    render.set_listener(function(self, event_type)
+     *        if event_type == render.CONTEXT_EVENT_CONTEXT_LOST then
+     *            --- Some stuff when rendering context is lost
+     *        elseif event_type == render.CONTEXT_EVENT_CONTEXT_RESTORED then
+     *            --- Start reload resources, reload game, etc.
+     *        end
+     *    end)
+     * end
+     * ```
      */
     function set_listener(callback?: (self: unknown, event_type: unknown) => void): void;
     /**
@@ -454,12 +786,23 @@ declare global {
      *
      * @param factor - polygon offset factor
      * @param units - polygon offset units
+     * @example
+     * ```lua
+     * render.enable_state(graphics.STATE_POLYGON_OFFSET_FILL)
+     * render.set_polygon_offset(1.0, 1.0)
+     * ```
      */
     function set_polygon_offset(factor: number, units: number): void;
     /**
      * Sets the projection matrix to use when rendering.
      *
      * @param matrix - projection matrix
+     * @example
+     * ```lua
+     * How to set the projection to orthographic with world origo at lower left,
+     * width and height as set in project settings and depth (z) between -1 and 1:
+     * render.set_projection(vmath.matrix4_orthographic(0, render.get_width(), 0, render.get_height(), -1, 1))
+     * ```
      */
     function set_projection(matrix: Matrix4): void;
     /**
@@ -476,6 +819,35 @@ declare global {
   - `graphics.BUFFER_TYPE_COLOR0_BIT`
   - `graphics.BUFFER_TYPE_DEPTH_BIT`
   - `graphics.BUFFER_TYPE_STENCIL_BIT`
+     * @example
+     * ```lua
+     * How to set a render target and draw to it and then switch back to the default render target
+     * The render target defines the depth/stencil buffers as transient, when set_render_target is called the next time the buffers may be invalidated and allow for optimisations depending on driver support
+     * function update(self, dt)
+     *     -- set render target so all drawing is done to it
+     *     render.set_render_target(self.my_render_target, { transient = { graphics.BUFFER_TYPE_DEPTH_BIT, graphics.BUFFER_TYPE_STENCIL_BIT } } )
+     *
+     *     -- draw a predicate to the render target
+     *     render.draw(self.my_pred)
+     *
+     *     -- set default render target. This also invalidates the depth and stencil buffers of the current target (self.my_render_target)
+     *     --  which can be an optimisation on some hardware
+     *     render.set_render_target(render.RENDER_TARGET_DEFAULT)
+     *
+     * end
+     *
+     * function update(self, dt)
+     *     -- set render target by a render target resource identifier
+     *     render.set_render_target('my_rt_resource')
+     *
+     *     -- draw a predicate to the render target
+     *     render.draw(self.my_pred)
+     *
+     *     -- reset the render target to the default backbuffer
+     *     render.set_render_target(render.RENDER_TARGET_DEFAULT)
+     *
+     * end
+     * ```
      */
     function set_render_target(render_target: Opaque<"render_target">, options?: { transient?: Record<string | number, unknown> }): void;
     /**
@@ -485,6 +857,12 @@ declare global {
      * @param render_target - render target to set size for
      * @param width - new render target width
      * @param height - new render target height
+     * @example
+     * ```lua
+     * Resize render targets to the current window size:
+     * render.set_render_target_size(self.my_render_target, render.get_window_width(), render.get_window_height())
+     * render.set_render_target_size('my_rt_resource', render.get_window_width(), render.get_window_height())
+     * ```
      */
     function set_render_target_size(render_target: Opaque<"render_target">, width: number, height: number): void;
     /**
@@ -514,6 +892,11 @@ declare global {
      * @param func - stencil test function, see the description for available values
      * @param ref - reference value for the stencil test
      * @param mask - mask that is ANDed with both the reference value and the stored stencil value when the test is done
+     * @example
+     * ```lua
+     * -- let only 0's pass the stencil test
+     * render.set_stencil_func(graphics.COMPARE_FUNC_EQUAL, 0, 1)
+     * ```
      */
     function set_stencil_func(func: number, ref: number, mask: number): void;
     /**
@@ -526,6 +909,11 @@ declare global {
      * The mask is initially all `1`'s.
      *
      * @param mask - stencil mask
+     * @example
+     * ```lua
+     * -- set the stencil mask to all 1:s
+     * render.set_stencil_mask(0xff)
+     * ```
      */
     function set_stencil_mask(mask: number): void;
     /**
@@ -552,12 +940,43 @@ declare global {
      * @param sfail - action to take when the stencil test fails
      * @param dpfail - the stencil action when the stencil test passes
      * @param dppass - the stencil action when both the stencil test and the depth test pass, or when the stencil test passes and either there is no depth buffer or depth testing is not enabled
+     * @example
+     * ```lua
+     * Set the stencil function to never pass and operator to always draw 1's
+     * on test fail.
+     * render.set_stencil_func(graphics.COMPARE_FUNC_NEVER, 1, 0xFF)
+     * -- always draw 1's on test fail
+     * render.set_stencil_op(graphics.STENCIL_OP_REPLACE, graphics.STENCIL_OP_KEEP, graphics.STENCIL_OP_KEEP)
+     * ```
      */
     function set_stencil_op(sfail: number, dpfail: number, dppass: number): void;
     /**
      * Sets the view matrix to use when rendering.
      *
      * @param matrix - view matrix to set
+     * @example
+     * ```lua
+     * How to set the view and projection matrices according to
+     * the values supplied by a camera.
+     * function init(self)
+     *   self.view = vmath.matrix4()
+     *   self.projection = vmath.matrix4()
+     * end
+     *
+     * function update(self, dt)
+     *   -- set the view to the stored view value
+     *   render.set_view(self.view)
+     *   -- now we can draw with this view
+     * end
+     *
+     * function on_message(self, message_id, message)
+     *   if message_id == hash("set_view_projection") then
+     *      -- camera view and projection arrives here.
+     *      self.view = message.view
+     *      self.projection = message.projection
+     *   end
+     * end
+     * ```
      */
     function set_view(matrix: Matrix4): void;
     /**
@@ -567,6 +986,11 @@ declare global {
      * @param y - bottom corner
      * @param width - viewport width
      * @param height - viewport height
+     * @example
+     * ```lua
+     * -- Set the viewport to the window dimensions.
+     * render.set_viewport(0, 0, render.get_window_width(), render.get_window_height())
+     * ```
      */
     function set_viewport(x: number, y: number, width: number, height: number): void;
   }

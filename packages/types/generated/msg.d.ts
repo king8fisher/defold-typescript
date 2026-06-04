@@ -8,6 +8,12 @@ declare global {
      * script component.
      *
      * @returns a new URL
+     * @example
+     * ```lua
+     * Create a new URL which will address the current script:
+     * local my_url = msg.url()
+     * print(my_url) --> url: [current_collection:/my_instance#my_component]
+     * ```
      */
     function url(): Url;
     /**
@@ -22,6 +28,17 @@ declare global {
      *
      * @param urlstring - string to create the url from
      * @returns a new URL
+     * @example
+     * ```lua
+     * local my_url = msg.url("#my_component")
+     * print(my_url) --> url: [current_collection:/my_instance#my_component]
+     *
+     * local my_url = msg.url("my_collection:/my_sub_collection/my_instance#my_component")
+     * print(my_url) --> url: [my_collection:/my_sub_collection/my_instance#my_component]
+     *
+     * local my_url = msg.url("my_socket:")
+     * print(my_url) --> url: [my_collection:]
+     * ```
      */
     function url(urlstring: string): Url;
     /**
@@ -31,6 +48,18 @@ declare global {
      * @param path - path of the URL
      * @param fragment - fragment of the URL
      * @returns a new URL
+     * @example
+     * ```lua
+     * local my_socket = "main" -- specify by valid name
+     * local my_path = hash("/my_collection/my_gameobject") -- specify as string or hash
+     * local my_fragment = "component" -- specify as string or hash
+     * local my_url = msg.url(my_socket, my_path, my_fragment)
+     *
+     * print(my_url) --> url: [main:/my_collection/my_gameobject#component]
+     * print(my_url.socket) --> 786443 (internal numeric value)
+     * print(my_url.path) --> hash: [/my_collection/my_gameobject]
+     * print(my_url.fragment) --> hash: [component]
+     * ```
      */
     function url(socket?: string | Hash, path?: string | Hash, fragment?: string | Hash): Url;
   }

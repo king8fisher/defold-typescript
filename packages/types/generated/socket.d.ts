@@ -33,6 +33,13 @@ declare global {
      * You should use the values returned by this function for relative measurements only.
      *
      * @returns the number of seconds elapsed.
+     * @example
+     * ```lua
+     * How to use the gettime() function to measure running time:
+     * t = socket.gettime()
+     * -- do stuff
+     * print(socket.gettime() - t .. " seconds elapsed")
+     * ```
      */
     function gettime(): number;
     /**
@@ -41,6 +48,18 @@ declare global {
      *
      * @param finalizer - a function that will be called before the try throws the exception.
      * @returns the customized try function.
+     * @example
+     * ```lua
+     * Perform operations on an open socket c:
+     * -- create a try function that closes 'c' on error
+     * local try = socket.newtry(function() c:close() end)
+     * -- do everything reassured c will be closed
+     * try(c:send("hello there?\r\n"))
+     * local answer = try(c:receive())
+     * ...
+     * try(c:send("good bye\r\n"))
+     * c:close()
+     * ```
      */
     function newtry(finalizer: () => void): (...args: unknown[]) => unknown;
     /**
@@ -49,6 +68,19 @@ declare global {
      *
      * @param func - a function that calls a try function (or assert, or error) to throw exceptions.
      * @returns an equivalent function that instead of throwing exceptions, returns `nil` followed by an error message.
+     * @example
+     * ```lua
+     * local dostuff = socket.protect(function()
+     *     local try = socket.newtry()
+     *     local c = try(socket.connect("myserver.com", 80))
+     *     try = socket.newtry(function() c:close() end)
+     *     try(c:send("hello?\r\n"))
+     *     local answer = try(c:receive())
+     *     c:close()
+     * end)
+     *
+     * local n, error = dostuff()
+     * ```
      */
     function protect(func: (...args: unknown[]) => unknown): (arg0: unknown) => void;
     /**
@@ -76,6 +108,16 @@ declare global {
      * @param ret1 - argument 1.
      * @param ret2 - argument 2.
      * @param retN - argument N.
+     * @example
+     * ```lua
+     * Instead of doing the following with dummy variables:
+     * -- get the status code and separator from SMTP server reply
+     * local dummy1, dummy2, code, sep = string.find(line, "^(%d%d%d)(.?)")
+     *
+     * You can skip a number of variables:
+     * -- get the status code and separator from SMTP server reply
+     * local code, sep = socket.skip(2, string.find(line, "^(%d%d%d)(.?)"))
+     * ```
      */
     function skip(d: number, ret1?: unknown, ret2?: unknown, retN?: unknown): LuaMultiReturn<[unknown, unknown, unknown]>;
     /**

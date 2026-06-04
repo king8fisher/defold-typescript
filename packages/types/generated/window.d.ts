@@ -113,6 +113,26 @@ declare global {
   table The callback value `data` is a table which currently holds these values
   - number `width`: The width of a resize event. nil otherwise.
   - number `height`: The height of a resize event. nil otherwise.
+     * @example
+     * ```lua
+     * function window_callback(self, event, data)
+     *     if event == window.WINDOW_EVENT_FOCUS_LOST then
+     *         print("window.WINDOW_EVENT_FOCUS_LOST")
+     *     elseif event == window.WINDOW_EVENT_FOCUS_GAINED then
+     *         print("window.WINDOW_EVENT_FOCUS_GAINED")
+     *     elseif event == window.WINDOW_EVENT_ICONFIED then
+     *         print("window.WINDOW_EVENT_ICONFIED")
+     *     elseif event == window.WINDOW_EVENT_DEICONIFIED then
+     *         print("window.WINDOW_EVENT_DEICONIFIED")
+     *     elseif event == window.WINDOW_EVENT_RESIZED then
+     *         print("Window resized: ", data.width, data.height)
+     *     end
+     * end
+     *
+     * function init(self)
+     *     window.set_listener(window_callback)
+     * end
+     * ```
      */
     function set_listener(callback?: (self: unknown, event: unknown, data: unknown) => void): void;
     /**

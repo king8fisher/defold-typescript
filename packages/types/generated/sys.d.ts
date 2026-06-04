@@ -20,6 +20,12 @@ declare global {
      *
      * @param buffer - buffer to deserialize from
      * @returns lua table with deserialized data
+     * @example
+     * ```lua
+     * Deserialize a lua table that was previously serialized:
+     * local buffer = sys.serialize(my_table)
+     * local table = sys.deserialize(buffer)
+     * ```
      */
     function deserialize(buffer: string): Record<string | number, unknown>;
     /**
@@ -28,12 +34,29 @@ declare global {
      *
      * @param path - path to check
      * @returns `true` if the path exists, `false` otherwise
+     * @example
+     * ```lua
+     * Load data but return nil if path didn't exist
+     * if not sys.exists(path) then
+     *     return nil
+     * end
+     * return sys.load(path) -- returns {} if it failed
+     * ```
      */
     function exists(path: string): boolean;
     /**
      * Terminates the game application and reports the specified `code` to the OS.
      *
      * @param code - exit code to report to the OS, 0 means clean exit
+     * @example
+     * ```lua
+     * This examples demonstrates how to exit the application when some kind of quit messages is received (maybe from gui or similar):
+     * function on_message(self, message_id, message, sender)
+     *     if message_id == hash("quit") then
+     *         sys.exit(0)
+     *     end
+     * end
+     * ```
      */
     function exit(code: number): void;
     /**
@@ -47,6 +70,30 @@ declare global {
      * @returns table with application information in the following fields:
   `installed`
   boolean `true` if the application is installed, `false` otherwise.
+     * @example
+     * ```lua
+     * Check if twitter is installed:
+     * sysinfo = sys.get_sys_info()
+     * twitter = {}
+     *
+     * if sysinfo.system_name == "Android" then
+     *   twitter = sys.get_application_info("com.twitter.android")
+     * elseif sysinfo.system_name == "iPhone OS" then
+     *   twitter = sys.get_application_info("twitter:")
+     * end
+     *
+     * if twitter.installed then
+     *   -- twitter is installed!
+     * end
+     *
+     *  Info.plist for the iOS app needs to list the schemes that are queried:
+     * ...
+     * <key>LSApplicationQueriesSchemes</key>
+     *  <array>
+     *    <string>twitter</string>
+     *  </array>
+     * ...
+     * ```
      */
     function get_application_info(app_string: string): { installed: boolean };
     /**
@@ -54,6 +101,28 @@ declare global {
      * This function will raise a Lua error if unable to get the application support path.
      *
      * @returns path to application executable
+     * @example
+     * ```lua
+     * Find a path where we can store data (the example path is on the macOS platform):
+     * -- macOS: /Applications/my_game.app
+     * local application_path = sys.get_application_path()
+     * print(application_path) --> /Applications/my_game.app
+     *
+     * -- Windows: C:\Program Files\my_game\my_game.exe
+     * print(application_path) --> C:\Program Files\my_game
+     *
+     * -- Linux: /home/foobar/my_game/my_game
+     * print(application_path) --> /home/foobar/my_game
+     *
+     * -- Android package name: com.foobar.my_game
+     * print(application_path) --> /data/user/0/com.foobar.my_game
+     *
+     * -- iOS: my_game.app
+     * print(application_path) --> /var/containers/Bundle/Applications/123456AB-78CD-90DE-12345678ABCD/my_game.app
+     *
+     * -- HTML5: http://www.foobar.com/my_game/
+     * print(application_path) --> http://www.foobar.com/my_game
+     * ```
      */
     function get_application_path(): string;
     /**
@@ -62,6 +131,11 @@ declare global {
      * @param key - key to get value for. The syntax is SECTION.KEY
      * @param default_value - (optional) default value to return if the value does not exist
      * @returns config value as a boolean. default_value if the config key does not exist. false if no default value was supplied.
+     * @example
+     * ```lua
+     * Get user config value
+     * local vsync = sys.get_config_boolean("display.vsync", false)
+     * ```
      */
     function get_config_boolean(key: string, default_value?: boolean): boolean;
     /**
@@ -70,6 +144,16 @@ declare global {
      * @param key - key to get value for. The syntax is SECTION.KEY
      * @param default_value - (optional) default value to return if the value does not exist
      * @returns config value as an integer. default_value if the config key does not exist. 0 if no default value was supplied.
+     * @example
+     * ```lua
+     * Get user config value
+     * local speed = sys.get_config_int("my_game.speed", 20) -- with default value
+     *
+     * local testmode = sys.get_config_int("my_game.testmode") -- without default value
+     * if testmode ~= nil then
+     *     -- do stuff
+     * end
+     * ```
      */
     function get_config_int(key: string, default_value?: number): number;
     /**
@@ -78,6 +162,11 @@ declare global {
      * @param key - key to get value for. The syntax is SECTION.KEY
      * @param default_value - (optional) default value to return if the value does not exist
      * @returns config value as an number. default_value if the config key does not exist. 0 if no default value was supplied.
+     * @example
+     * ```lua
+     * Get user config value
+     * local speed = sys.get_config_number("my_game.speed", 20.0)
+     * ```
      */
     function get_config_number(key: string, default_value?: number): number;
     /**
@@ -86,6 +175,17 @@ declare global {
      * @param key - key to get value for. The syntax is SECTION.KEY
      * @param default_value - (optional) default value to return if the value does not exist
      * @returns config value as a string. default_value if the config key does not exist. nil if no default value was supplied.
+     * @example
+     * ```lua
+     * Get user config value
+     * local text = sys.get_config_string("my_game.text", "default text"))
+     *
+     * Start the engine with a bootstrap config override and add a custom config value
+     * $ dmengine --config=bootstrap.main_collection=/mytest.collectionc --config=mygame.testmode=1
+     *
+     * Read the custom config value from the command line
+     * local testmode = sys.get_config_int("mygame.testmode")
+     * ```
      */
     function get_config_string(key: string, default_value?: string): string;
     /**
@@ -97,6 +197,13 @@ declare global {
   - `sys.NETWORK_DISCONNECTED` (no network connection is found)
   - `sys.NETWORK_CONNECTED_CELLULAR` (connected through mobile cellular)
   - `sys.NETWORK_CONNECTED` (otherwise, Wifi)
+     * @example
+     * ```lua
+     * Check if we are connected through a cellular connection
+     * if (sys.NETWORK_CONNECTED_CELLULAR == sys.get_connectivity()) then
+     *   print("Connected via cellular, avoid downloading big files!")
+     * end
+     * ```
      */
     function get_connectivity(): Opaque<"constant">;
     /**
@@ -109,6 +216,14 @@ declare global {
   string The SHA1 for the current engine build, i.e. "0060183cce2e29dbd09c85ece83cbb72068ee050"
   `is_debug`
   boolean If the engine is a debug or release version
+     * @example
+     * ```lua
+     * How to retrieve engine information:
+     * -- Update version text label so our testers know what version we're running
+     * local engine_info = sys.get_engine_info()
+     * local version_str = "Defold " .. engine_info.version .. "\n" .. engine_info.version_sha1
+     * gui.set_text(gui.get_node("version"), version_str)
+     * ```
      */
     function get_engine_info(): { version: string; version_sha1: string; is_debug: boolean };
     /**
@@ -117,6 +232,16 @@ declare global {
      *
      * @param filename - file to read from
      * @returns the path prefixed with the proper host mount
+     * @example
+     * ```lua
+     * Save data on the host
+     * local host_path = sys.get_host_path("logs/test.txt")
+     * sys.save(host_path, mytable)
+     *
+     * Load data from the host
+     * local host_path = sys.get_host_path("logs/test.txt")
+     * local table = sys.load(host_path)
+     * ```
      */
     function get_host_path(filename: string): string;
     /**
@@ -133,6 +258,16 @@ declare global {
   boolean `true` if the interface is up (available to transmit and receive data), `false` otherwise.
   `running`
   boolean `true` if the interface is running, `false` otherwise.
+     * @example
+     * ```lua
+     * How to get the IP address of interface "en0":
+     * ifaddrs = sys.get_ifaddrs()
+     * for _,interface in ipairs(ifaddrs) do
+     *   if interface.name == "en0" then
+     *     local ip = interface.address
+     *   end
+     * end
+     * ```
      */
     function get_ifaddrs(): { name: string; address: string; mac: string; up: boolean; running: boolean }[];
     /**
@@ -142,6 +277,29 @@ declare global {
      * @param application_id - user defined id of the application, which helps define the location of the save-file
      * @param file_name - file-name to get path for
      * @returns path to save-file
+     * @example
+     * ```lua
+     * Find a path where we can store data:
+     * local my_file_path = sys.get_save_file("my_game", "my_file")
+     * -- macOS: /Users/foobar/Library/Application Support/my_game/my_file
+     * print(my_file_path) --> /Users/foobar/Library/Application Support/my_game/my_file
+     *
+     * -- Windows: C:\Users\foobar\AppData\Roaming\my_game\my_file
+     * print(my_file_path) --> C:\Users\foobar\AppData\Roaming\my_game\my_file
+     *
+     * -- Linux: $XDG_DATA_HOME/my_game/my_file or /home/foobar/.my_game/my_file
+     * -- Linux: Defaults to /home/foobar/.local/share/my_game/my_file if neither exist.
+     * print(my_file_path) --> /home/foobar/.local/share/my_game/my_file
+     *
+     * -- Android package name: com.foobar.packagename
+     * print(my_file_path) --> /data/data/0/com.foobar.packagename/files/my_file
+     *
+     * -- iOS: my_game.app
+     * print(my_file_path) --> /var/mobile/Containers/Data/Application/123456AB-78CD-90DE-12345678ABCD/my_game/my_file
+     *
+     * -- HTML5 path inside the IndexedDB: /data/.my_game/my_file or /.my_game/my_file
+     * print(my_file_path) --> /data/.my_game/my_file
+     * ```
      */
     function get_save_file(application_id: string, file_name: string): string;
     /**
@@ -172,6 +330,14 @@ declare global {
   string This value secured by OS. "identifierForVendor" on iOS. "android_id" on Android. On Android, you need to add `READ_PHONE_STATE` permission to be able to get this data. We don't use this permission in Defold.
   `user_agent`
   string The HTTP user agent, i.e. "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8"
+     * @example
+     * ```lua
+     * How to get system information:
+     * local info = sys.get_sys_info()
+     * if info.system_name == "HTML5" then
+     *   -- We are running in a browser.
+     * end
+     * ```
      */
     function get_sys_info(options?: { ignore_secure?: boolean }): { device_model: string; manufacturer: string; system_name: string; system_version: string; api_version: string; language: string; device_language: string; territory: string; gmt_offset: number; device_ident: string; user_agent: string };
     /**
@@ -180,6 +346,15 @@ declare global {
      *
      * @param filename - file to read from
      * @returns lua table, which is empty if the file could not be found
+     * @example
+     * ```lua
+     * Load data that was previously saved, e.g. an earlier game session:
+     * local my_file_path = sys.get_save_file("my_game", "my_file")
+     * local my_table = sys.load(my_file_path)
+     * if not next(my_table) then
+     *   -- empty table
+     * end
+     * ```
      */
     function load(filename: string): Record<string | number, unknown>;
     /**
@@ -194,6 +369,18 @@ declare global {
      * For example "main/data/,assets/level_data.json".
      *
      * @param filename - resource to load, full path
+     * @example
+     * ```lua
+     * -- Load level data into a string
+     * local data, error = sys.load_resource("/assets/level_data.json")
+     * -- Decode json string to a Lua table
+     * if data then
+     *   local data_table = json.decode(data)
+     *   pprint(data_table)
+     * else
+     *   print(error)
+     * end
+     * ```
      */
     function load_resource(filename: string): LuaMultiReturn<[string | unknown, string | unknown]>;
     /**
@@ -209,6 +396,14 @@ declare global {
   - `_top` - URL replaces any framesets that may be loaded.
   - `name` - The name of the window (Note: the name does not specify the title of the new window).
      * @returns a boolean indicating if the url could be opened or not
+     * @example
+     * ```lua
+     * Open an URL:
+     * local success = sys.open_url("http://www.defold.com", {target = "_blank"})
+     * if not success then
+     *   -- could not open the url...
+     * end
+     * ```
      */
     function open_url(url: string, attributes?: { target?: string }): boolean;
     /**
@@ -224,6 +419,13 @@ declare global {
      * @param arg4 - argument 4
      * @param arg5 - argument 5
      * @param arg6 - argument 6
+     * @example
+     * ```lua
+     * How to reboot engine with a specific bootstrap collection.
+     * local arg1 = '--config=bootstrap.main_collection=/my.collectionc'
+     * local arg2 = 'build/game.projectc'
+     * sys.reboot(arg1, arg2)
+     * ```
      */
     function reboot(arg1?: string, arg2?: string, arg3?: string, arg4?: string, arg5?: string, arg6?: string): void;
     /**
@@ -239,6 +441,14 @@ declare global {
      *
      * @param filename - file to write to
      * @param table - lua table to save
+     * @example
+     * ```lua
+     * Save data:
+     * local my_table = {}
+     * table.insert(my_table, "my_value")
+     * local my_file_path = sys.get_save_file("my_game", "my_file")
+     * sys.save(my_file_path, my_table)
+     * ```
      */
     function save(filename: string, table: Record<string | number, unknown>): void;
     /**
@@ -248,12 +458,23 @@ declare global {
      *
      * @param table - lua table to serialize
      * @returns serialized data buffer
+     * @example
+     * ```lua
+     * Serialize table:
+     * local my_table = {}
+     * table.insert(my_table, "my_value")
+     * local buffer = sys.serialize(my_table)
+     * ```
      */
     function serialize(table: Record<string | number, unknown>): string;
     /**
      * Sets the host that is used to check for network connectivity against.
      *
      * @param host - hostname to check against
+     * @example
+     * ```lua
+     * sys.set_connectivity_host("www.google.com")
+     * ```
      */
     function set_connectivity_host(host: string): void;
     /**
@@ -267,6 +488,26 @@ declare global {
   string The source file, line number and error message.
   `traceback`
   string The stack traceback.
+     * @example
+     * ```lua
+     * Install error handler that just prints the errors
+     * local function my_error_handler(source, message, traceback)
+     *   print(source)    --> lua
+     *   print(message)   --> main/my.script:10: attempt to perform arithmetic on a string value
+     *   print(traceback) --> stack traceback:
+     *                    -->         main/test.script:10: in function 'boom'
+     *                    -->         main/test.script:15: in function <main/my.script:13>
+     * end
+     *
+     * local function boom()
+     *   return 10 + "string"
+     * end
+     *
+     * function init(self)
+     *   sys.set_error_handler(my_error_handler)
+     *   boom()
+     * end
+     * ```
      */
     function set_error_handler(error_handler: (source: unknown, message: unknown, traceback: unknown) => void): void;
     /**
@@ -277,6 +518,11 @@ declare global {
      * guarantee that the frame cap will be achieved depending on platform specifics and hardware settings.
      *
      * @param frequency - target frequency. 60 for 60 fps
+     * @example
+     * ```lua
+     * Setting the update frequency to 60 frames per second
+     * sys.set_update_frequency(60)
+     * ```
      */
     function set_update_frequency(frequency: number): void;
     /**
@@ -291,6 +537,11 @@ declare global {
      * This setting may be overridden by driver settings.
      *
      * @param swap_interval - target swap interval.
+     * @example
+     * ```lua
+     * Setting the swap intervall to swap every v-blank
+     * sys.set_vsync_swap_interval(1)
+     * ```
      */
     function set_vsync_swap_interval(swap_interval: number): void;
   }

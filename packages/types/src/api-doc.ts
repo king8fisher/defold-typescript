@@ -32,6 +32,7 @@ export interface ApiFunction {
   description: string;
   parameters: ApiParameter[];
   returnValues: ApiParameter[];
+  examples?: string;
 }
 
 export interface ApiParameter {
@@ -124,6 +125,7 @@ function parseFunction(element: Record<string, unknown>): ApiFunction {
     description: stringOr(element.description, ""),
     parameters: parseParameterList(element.parameters),
     returnValues: parseParameterList(element.returnvalues),
+    examples: stringOr(element.examples, ""),
   };
 }
 

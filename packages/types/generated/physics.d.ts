@@ -61,6 +61,15 @@ declare global {
      * Note: For 2D physics the z component will always be zero.
      *
      * @returns gravity vector of collection
+     * @example
+     * ```lua
+     * function init(self)
+     *     local gravity = physics.get_gravity()
+     *     -- Inverse gravity!
+     *     gravity = -gravity
+     *     physics.set_gravity(gravity)
+     * end
+     * ```
      */
     function get_gravity(): Vector3;
     /**
@@ -168,6 +177,24 @@ declare global {
   `all`
   boolean Set to `true` to return all ray cast hits. If `false`, it will only return the closest hit.
      * @returns It returns a list. If missed it returns `nil`. See ray_cast_response for details on the returned values.
+     * @example
+     * ```lua
+     * How to perform a ray cast synchronously:
+     * function init(self)
+     *     self.groups = {hash("world"), hash("enemy")}
+     * end
+     *
+     * function update(self, dt)
+     *     -- request ray cast
+     *     local result = physics.raycast(from, to, self.groups, {all=true})
+     *     if result ~= nil then
+     *         -- act on the hit (see 'ray_cast_response')
+     *         for _,result in ipairs(results) do
+     *             handle_result(result)
+     *         end
+     *     end
+     * end
+     * ```
      */
     function raycast(from: Vector3, to: Vector3, groups: Record<string | number, unknown>, options?: { all?: boolean }): Record<string | number, unknown> | unknown;
     /**
@@ -185,6 +212,27 @@ declare global {
      * @param to - the world position of the end of the ray
      * @param groups - a lua table containing the hashed groups for which to test collisions against
      * @param request_id - a number in range [0,255]. It will be sent back in the response for identification, 0 by default
+     * @example
+     * ```lua
+     * How to perform a ray cast asynchronously:
+     * function init(self)
+     *     self.my_groups = {hash("my_group1"), hash("my_group2")}
+     * end
+     *
+     * function update(self, dt)
+     *     -- request ray cast
+     *     physics.raycast_async(my_start, my_end, self.my_groups)
+     * end
+     *
+     * function on_message(self, message_id, message, sender)
+     *     -- check for the response
+     *     if message_id == hash("ray_cast_response") then
+     *         -- act on the hit
+     *     elseif message_id == hash("ray_cast_missed") then
+     *         -- act on the miss
+     *     end
+     * end
+     * ```
      */
     function raycast_async(from: Vector3, to: Vector3, groups: Record<string | number, unknown>, request_id?: number): void;
     /**
@@ -202,6 +250,84 @@ declare global {
   - ray_cast_missed
   `data`
   table The callback value data is a table that contains event-related data. See the documentation for details on the messages.
+     * @example
+     * ```lua
+     * local function physics_world_listener(self, events)
+     *   for _,event in ipairs(events):
+     *       local event_type = event['type']
+     *       if event_type == hash("contact_point_event") then
+     *           pprint(event)
+     *           -- {
+     *           --  distance = 2.1490633487701,
+     *           --  applied_impulse = 0
+     *           --  a = { --[[0x113f7c6c0]]
+     *           --    group = hash: [box],
+     *           --    id = hash: [/box]
+     *           --    mass = 0,
+     *           --    normal = vmath.vector3(0.379, 0.925, -0),
+     *           --    position = vmath.vector3(517.337, 235.068, 0),
+     *           --    instance_position = vmath.vector3(480, 144, 0),
+     *           --    relative_velocity = vmath.vector3(-0, -0, -0),
+     *           --  },
+     *           --  b = { --[[0x113f7c840]]
+     *           --    group = hash: [circle],
+     *           --    id = hash: [/circle]
+     *           --    mass = 0,
+     *           --    normal = vmath.vector3(-0.379, -0.925, 0),
+     *           --    position = vmath.vector3(517.337, 235.068, 0),
+     *           --    instance_position = vmath.vector3(-0.0021, 0, -0.0022),
+     *           --    relative_velocity = vmath.vector3(0, 0, 0),
+     *           --  },
+     *           -- }
+     *       elseif event == hash("collision_event") then
+     *           pprint(event)
+     *           -- {
+     *           --  a = {
+     *           --          group = hash: [default],
+     *           --          position = vmath.vector3(183, 666, 0),
+     *           --          id = hash: [/go1]
+     *           --      },
+     *           --  b = {
+     *           --          group = hash: [default],
+     *           --          position = vmath.vector3(185, 704.05865478516, 0),
+     *           --          id = hash: [/go2]
+     *           --      }
+     *           -- }
+     *       elseif event ==  hash("trigger_event") then
+     *           pprint(event)
+     *           -- {
+     *           --  enter = true,
+     *           --  b = {
+     *           --      group = hash: [default],
+     *           --      id = hash: [/go2]
+     *           --  },
+     *           --  a = {
+     *           --      group = hash: [default],
+     *           --      id = hash: [/go1]
+     *           --  }
+     *           -- },
+     *       elseif event ==  hash("ray_cast_response") then
+     *           pprint(event)
+     *           --{
+     *           --  group = hash: [default],
+     *           --  request_id = 0,
+     *           --  position = vmath.vector3(249.92222595215, 249.92222595215, 0),
+     *           --  fraction = 0.68759721517563,
+     *           --  normal = vmath.vector3(0, 1, 0),
+     *           --  id = hash: [/go]
+     *           -- }
+     *       elseif event ==  hash("ray_cast_missed") then
+     *           pprint(event)
+     *           -- {
+     *           --  request_id = 0
+     *           --},
+     *       end
+     * end
+     *
+     * function init(self)
+     *     physics.set_event_listener(physics_world_listener)
+     * end
+     * ```
      */
     function set_event_listener(callback?: (self: unknown, events: unknown) => void): void;
     /**
@@ -210,6 +336,13 @@ declare global {
      * Note: For 2D physics the z component of the gravity vector will be ignored.
      *
      * @param gravity - the new gravity vector
+     * @example
+     * ```lua
+     * function init(self)
+     *     -- Set "upside down" gravity for this collection.
+     *     physics.set_gravity(vmath.vector3(0, 10.0, 0))
+     * end
+     * ```
      */
     function set_gravity(gravity: Vector3): void;
     /**
@@ -230,6 +363,13 @@ declare global {
      *
      * @param url - the collision object that should flip its shapes
      * @param flip - `true` if the collision object should flip its shapes, `false` if not
+     * @example
+     * ```lua
+     * function init(self)
+     *     self.fliph = true -- set on some condition
+     *     physics.set_hflip("#collisionobject", self.fliph)
+     * end
+     * ```
      */
     function set_hflip(url: string | Hash | Url, flip: boolean): void;
     /**
@@ -291,6 +431,13 @@ declare global {
      *
      * @param url - the collision object that should flip its shapes
      * @param flip - `true` if the collision object should flip its shapes, `false` if not
+     * @example
+     * ```lua
+     * function init(self)
+     *     self.flipv = true -- set on some condition
+     *     physics.set_vflip("#collisionobject", self.flipv)
+     * end
+     * ```
      */
     function set_vflip(url: string | Hash | Url, flip: boolean): void;
     /**
@@ -299,6 +446,10 @@ declare global {
      *
      * @param collisionobject - the collision object whose mass needs to be updated.
      * @param mass - the new mass value to set for the collision object.
+     * @example
+     * ```lua
+     *  physics.update_mass("#collisionobject", 14)
+     * ```
      */
     function update_mass(collisionobject: string | Hash | Url, mass: number): void;
     /**
