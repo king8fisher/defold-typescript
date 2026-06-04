@@ -43,6 +43,7 @@ describe("runInit (add-TS mode)", () => {
     expect(result.written.sort()).toEqual(
       [
         ".gitignore",
+        ".vscode/defold-typescript.code-snippets",
         ".vscode/extensions.json",
         ".vscode/settings.json",
         "biome.json",
@@ -82,6 +83,7 @@ describe("runInit (add-TS mode)", () => {
     expect(result.written.sort()).toEqual(
       [
         ".gitignore",
+        ".vscode/defold-typescript.code-snippets",
         ".vscode/extensions.json",
         ".vscode/settings.json",
         "biome.json",
@@ -303,6 +305,7 @@ describe("runInit (new-project mode)", () => {
     "biome.json",
     ".vscode/extensions.json",
     ".vscode/settings.json",
+    ".vscode/defold-typescript.code-snippets",
   ];
 
   test("missing target directory: creates the directory and writes the scaffold files", () => {
@@ -588,5 +591,156 @@ describe("runInit (.vscode editor config)", () => {
     runInit({ cwd });
 
     expect(readFileSync(path.join(cwd, ".vscode", "extensions.json"), "utf8")).toBe(garbage);
+  });
+});
+
+describe("runInit (.vscode script snippets)", () => {
+  const SNIPPETS_REL = ".vscode/defold-typescript.code-snippets";
+
+  interface Snippet {
+    scope: string;
+    prefix: string;
+    body: string[];
+    description?: string;
+  }
+
+  function readSnippets(): Record<string, Snippet> {
+    return JSON.parse(readFileSync(path.join(cwd, SNIPPETS_REL), "utf8"));
+  }
+
+  function snippetOf(snippets: Record<string, Snippet>, key: string): Snippet {
+    const snippet = snippets[key];
+    if (!snippet) {
+      throw new Error(`missing snippet: ${key}`);
+    }
+    return snippet;
+  }
+
+  const EXPECTED_KEYS = [
+    "Defold script (inferred self)",
+    "Defold script (typed self)",
+    "Defold GUI script (inferred self)",
+    "Defold GUI script (typed self)",
+    "Defold render script (inferred self)",
+    "Defold render script (typed self)",
+  ];
+
+  test("new-project mode writes a snippet file with exactly the six expected keys", () => {
+    runInit({ cwd });
+
+    expect(existsSync(path.join(cwd, SNIPPETS_REL))).toBe(true);
+    const snippets = readSnippets();
+    expect(Object.keys(snippets).sort()).toEqual([...EXPECTED_KEYS].sort());
+  });
+
+  test("add-TS mode also writes the snippet file", () => {
+    touch("game.project", "[project]\n");
+
+    runInit({ cwd });
+
+    expect(existsSync(path.join(cwd, SNIPPETS_REL))).toBe(true);
+    expect(Object.keys(readSnippets()).sort()).toEqual([...EXPECTED_KEYS].sort());
+  });
+
+  test("inline snippets call the bare factory with no <Self> argument", () => {
+    runInit({ cwd });
+    const snippets = readSnippets();
+
+    const inline = (key: string) => snippetOf(snippets, key).body.join("\n");
+    expect(inline("Defold script (inferred self)")).toContain("defineScript(");
+    expect(inline("Defold GUI script (inferred self)")).toContain("defineGuiScript(");
+    expect(inline("Defold render script (inferred self)")).toContain("defineRenderScript(");
+    for (const key of [
+      "Defold script (inferred self)",
+      "Defold GUI script (inferred self)",
+      "Defold render script (inferred self)",
+    ]) {
+      expect(inline(key)).not.toContain("<Self>");
+    }
+  });
+
+  test("typed snippets declare a Self type and parameterize the factory with it", () => {
+    runInit({ cwd });
+    const snippets = readSnippets();
+
+    const typed = (key: string) => snippetOf(snippets, key).body.join("\n");
+    expect(typed("Defold script (typed self)")).toContain("type Self");
+    expect(typed("Defold script (typed self)")).toContain("defineScript<Self>");
+    expect(typed("Defold GUI script (typed self)")).toContain("defineGuiScript<Self>");
+    expect(typed("Defold render script (typed self)")).toContain("defineRenderScript<Self>");
+  });
+
+  test("render snippets keep on_message but omit on_input", () => {
+    runInit({ cwd });
+    const snippets = readSnippets();
+
+    for (const key of [
+      "Defold render script (inferred self)",
+      "Defold render script (typed self)",
+    ]) {
+      const body = snippetOf(snippets, key).body.join("\n");
+      expect(body).toContain("on_message");
+      expect(body).not.toContain("on_input");
+    }
+  });
+
+  test("every snippet imports its factory on the first line and scopes to typescript", () => {
+    runInit({ cwd });
+    const snippets = readSnippets();
+
+    const factoryFor: Record<string, string> = {
+      "Defold script (inferred self)": "defineScript",
+      "Defold script (typed self)": "defineScript",
+      "Defold GUI script (inferred self)": "defineGuiScript",
+      "Defold GUI script (typed self)": "defineGuiScript",
+      "Defold render script (inferred self)": "defineRenderScript",
+      "Defold render script (typed self)": "defineRenderScript",
+    };
+
+    for (const [key, factory] of Object.entries(factoryFor)) {
+      const snippet = snippetOf(snippets, key);
+      expect(snippet.scope).toBe("typescript");
+      expect(snippet.body[0]).toBe(`import { ${factory} } from "@defold-typescript/types";`);
+    }
+  });
+
+  test("merges into an existing snippet file, preserving user keys and never clobbering ours", () => {
+    touch("game.project", "[project]\n");
+    mkdirSync(path.join(cwd, ".vscode"), { recursive: true });
+    const userSnippet = {
+      scope: "typescript",
+      prefix: "my-thing",
+      body: ["// user snippet"],
+    };
+    touch(
+      SNIPPETS_REL,
+      `${JSON.stringify(
+        {
+          "My snippet": userSnippet,
+          "Defold script (inferred self)": userSnippet,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const result = runInit({ cwd });
+
+    const snippets = readSnippets();
+    expect(snippets["My snippet"]).toEqual(userSnippet);
+    expect(snippets["Defold script (inferred self)"]).toEqual(userSnippet);
+    expect(Object.keys(snippets).sort()).toEqual([...EXPECTED_KEYS, "My snippet"].sort());
+    expect(result.written).not.toContain(SNIPPETS_REL);
+  });
+
+  test("leaves an unparseable snippet file untouched", () => {
+    touch("game.project", "[project]\n");
+    mkdirSync(path.join(cwd, ".vscode"), { recursive: true });
+    const garbage = "definitely not json {{{\n";
+    touch(SNIPPETS_REL, garbage);
+
+    runInit({ cwd });
+
+    expect(readFileSync(path.join(cwd, SNIPPETS_REL), "utf8")).toBe(garbage);
   });
 });
