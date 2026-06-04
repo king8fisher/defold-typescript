@@ -10,6 +10,7 @@ export {
   type Vector3,
   type Vector4,
 } from "./core-types";
+export { type DocCommentParts, htmlToDocText, renderDocComment } from "./doc-comment";
 export { type EmitOptions, emitDeclarations } from "./emit-dts";
 export {
   defineGuiScript,
