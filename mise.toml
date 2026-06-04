@@ -32,3 +32,11 @@ run = "bun scripts/publish.ts"
 [tasks.release]
 description = "Fallback: manually tag a version already published by `mise run publish`. Usage: mise run release <version>"
 run = "bun scripts/release.ts"
+
+[tasks.example-build]
+description = "Compile the platformer example (docs/examples/platformer) once with the local working-tree CLI"
+run = "bun packages/cli/src/bin.ts build docs/examples/platformer"
+
+[tasks.example-watch]
+description = "Watch and recompile the platformer example with the local working-tree CLI"
+run = "bun packages/cli/src/bin.ts watch docs/examples/platformer"

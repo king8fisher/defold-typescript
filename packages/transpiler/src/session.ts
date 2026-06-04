@@ -16,6 +16,9 @@ const requireFromHere = createRequire(import.meta.url);
 const COMPILER_OPTIONS: tstl.CompilerOptions = {
   luaTarget: tstl.LuaTarget.Lua54,
   sourceMap: true,
+  // Don't cross-check the seeded ambient .d.ts surface against itself; only user
+  // files matter (mirrors transpileProject and the editor's skipLibCheck).
+  skipLibCheck: true,
   luaPlugins: [{ plugin: lifecycleErasurePlugin }],
 };
 

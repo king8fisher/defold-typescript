@@ -46,6 +46,7 @@ export interface InputAction {
 export interface ScriptHooks<TSelf> {
   init?(self: TSelf): void;
   update?(self: TSelf, dt: number): void;
+  fixed_update?(self: TSelf, dt: number): void;
   on_message?<K extends string>(
     self: TSelf,
     message_id: K,

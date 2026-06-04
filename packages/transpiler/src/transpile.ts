@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import * as path from "node:path";
 import type * as ts from "typescript";
@@ -47,24 +47,44 @@ function readAmbient(rel: string): string {
   return readFileSync(path.join(TYPES_PKG_ROOT, rel), "utf8");
 }
 
-export const AMBIENT_FILES: Readonly<Record<string, string>> = {
-  "node_modules/@typescript-to-lua/language-extensions/index.d.ts": readFileSync(
-    path.join(TSTL_LANG_EXT_ROOT, "index.d.ts"),
-    "utf8",
-  ),
-  "node_modules/@defold-typescript/types/generated/vmath.d.ts": readAmbient("generated/vmath.d.ts"),
-  "node_modules/@defold-typescript/types/generated/msg.d.ts": readAmbient("generated/msg.d.ts"),
-  "node_modules/@defold-typescript/types/generated/go.d.ts": readAmbient("generated/go.d.ts"),
-  "node_modules/@defold-typescript/types/generated/builtin-messages.d.ts": readAmbient(
-    "generated/builtin-messages.d.ts",
-  ),
-  "node_modules/@defold-typescript/types/src/core-types.ts": readAmbient("src/core-types.ts"),
-  "node_modules/@defold-typescript/types/src/msg-overloads.d.ts":
-    readAmbient("src/msg-overloads.d.ts"),
-  "node_modules/@defold-typescript/types/src/lifecycle.ts": readAmbient("src/lifecycle.ts"),
-  "node_modules/@defold-typescript/types/index.ts":
-    'export { defineGuiScript, defineRenderScript, defineScript } from "./src/lifecycle";\n',
-};
+function buildAmbientFiles(): Record<string, string> {
+  const files: Record<string, string> = {
+    "node_modules/@typescript-to-lua/language-extensions/index.d.ts": readFileSync(
+      path.join(TSTL_LANG_EXT_ROOT, "index.d.ts"),
+      "utf8",
+    ),
+    "node_modules/@defold-typescript/types/src/core-types.ts": readAmbient("src/core-types.ts"),
+    "node_modules/@defold-typescript/types/src/msg-overloads.d.ts":
+      readAmbient("src/msg-overloads.d.ts"),
+    "node_modules/@defold-typescript/types/src/lifecycle.ts": readAmbient("src/lifecycle.ts"),
+    // Mirror the consumer-facing re-exports of the real package index so a user
+    // file can `import { defineScript }` and `import type { Hash, Vector3 }`.
+    "node_modules/@defold-typescript/types/index.ts": [
+      'export { defineGuiScript, defineRenderScript, defineScript } from "./src/lifecycle";',
+      'export type { GuiScriptHooks, InputAction, InputTouch, RenderScriptHooks, ScriptHooks } from "./src/lifecycle";',
+      'export type { Hash, Matrix4, Quaternion, Url, Vector, Vector3, Vector4 } from "./src/core-types";',
+      "",
+    ].join("\n"),
+    // Per-kind subpath entrypoints exist as package exports for the editor.
+    // Their namespaces are already seeded ambiently below, so the transpiler
+    // only needs the specifiers to resolve — an empty module is enough.
+    "node_modules/@defold-typescript/types/script.d.ts": "export {};\n",
+    "node_modules/@defold-typescript/types/gui-script.d.ts": "export {};\n",
+    "node_modules/@defold-typescript/types/render-script.d.ts": "export {};\n",
+  };
+  // Seed every generated namespace so real multi-namespace user code (sprite,
+  // physics, label, ...) resolves — not just the historical vmath/msg/go subset.
+  for (const entry of readdirSync(path.join(TYPES_PKG_ROOT, "generated"))) {
+    if (entry.endsWith(".d.ts")) {
+      files[`node_modules/@defold-typescript/types/generated/${entry}`] = readAmbient(
+        `generated/${entry}`,
+      );
+    }
+  }
+  return files;
+}
+
+export const AMBIENT_FILES: Readonly<Record<string, string>> = buildAmbientFiles();
 
 interface CollectableFile {
   readonly sourceFiles: readonly ts.SourceFile[];
@@ -108,6 +128,9 @@ export function transpileProject(input: TranspileProjectInput): TranspileProject
   const result = tstl.transpileVirtualProject(merged, {
     luaTarget: tstl.LuaTarget.Lua54,
     sourceMap: true,
+    // Don't cross-check the seeded ambient .d.ts surface against itself; we only
+    // care about diagnostics on user files (mirrors the editor's skipLibCheck).
+    skipLibCheck: true,
     luaPlugins: [{ plugin: lifecycleErasurePlugin }],
   });
 

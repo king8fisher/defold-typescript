@@ -14,6 +14,15 @@ describe("defineScript", () => {
     const hooks = {};
     expect(defineScript<Record<string, never>>(hooks)).toBe(hooks);
   });
+
+  test("accepts a fixed_update hook typed like update", () => {
+    const hooks = {
+      fixed_update(self: { velocity: number }, dt: number) {
+        self.velocity += dt;
+      },
+    };
+    expect(defineScript<{ velocity: number }>(hooks)).toBe(hooks);
+  });
 });
 
 describe("defineGuiScript", () => {

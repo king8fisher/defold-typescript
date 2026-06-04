@@ -1,0 +1,118 @@
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local air_acceleration_factor = 0.8
+local max_speed = 450
+local gravity = -1900
+local jump_takeoff_speed = 1200
+local group_obstacle = hash("ground")
+local input_left = hash("left")
+local input_right = hash("right")
+local input_jump = hash("jump")
+local anim_walk = hash("walk")
+local anim_idle = hash("idle")
+local anim_jump = hash("jump")
+local anim_fall = hash("fall")
+local function play_animation(self, ____self, anim)
+    if ____self.anim ~= anim then
+        sprite.play_flipbook("#sprite", anim)
+        ____self.anim = anim
+    end
+end
+local function update_animations(self, ____self)
+    sprite.set_hflip("#sprite", ____self.facing_direction < 0)
+    if ____self.ground_contact then
+        if ____self.velocity.x == 0 then
+            play_animation(_G, ____self, anim_idle)
+        else
+            play_animation(_G, ____self, anim_walk)
+        end
+    elseif ____self.velocity.y > 0 then
+        play_animation(_G, ____self, anim_jump)
+    else
+        play_animation(_G, ____self, anim_fall)
+    end
+end
+local function handle_obstacle_contact(self, ____self, normal, distance)
+    if distance > 0 then
+        local proj = vmath.project(____self.correction, normal * distance)
+        if proj < 1 then
+            local comp = normal * (distance - distance * proj)
+            go.set_position(go.get_position() + comp)
+            ____self.correction = ____self.correction + comp
+        end
+    end
+    if math.abs(normal.x) > 0.7 then
+        ____self.wall_contact = true
+        ____self.velocity.x = 0
+    end
+    if normal.y > 0.7 then
+        ____self.ground_contact = true
+        ____self.velocity.y = 0
+    end
+    if normal.y < -0.7 then
+        ____self.velocity.y = 0
+    end
+end
+local function jump(self, ____self)
+    if ____self.ground_contact then
+        ____self.velocity.y = jump_takeoff_speed
+        play_animation(_G, ____self, anim_jump)
+        ____self.ground_contact = false
+    end
+end
+local function abort_jump(self, ____self)
+    if ____self.velocity.y > 0 then
+        ____self.velocity.y = ____self.velocity.y * 0.5
+    end
+end
+local function walk(self, ____self, direction)
+    if direction ~= 0 then
+        ____self.facing_direction = direction
+    end
+    if ____self.ground_contact then
+        ____self.velocity.x = max_speed * direction
+    else
+        ____self.velocity.x = max_speed * air_acceleration_factor * direction
+    end
+end
+function init(____self)
+    msg.post(".", "acquire_input_focus")
+    ____self.velocity = vmath.vector3(0, 0, 0)
+    ____self.facing_direction = 0
+    ____self.correction = vmath.vector3()
+    ____self.ground_contact = false
+    ____self.anim = nil
+end
+function fixed_update(____self, dt)
+    ____self.velocity.y = ____self.velocity.y + gravity * dt
+    local pos = go.get_position() + ____self.velocity * dt
+    go.set_position(pos)
+    update_animations(_G, ____self)
+    ____self.correction = vmath.vector3()
+    ____self.ground_contact = false
+    ____self.wall_contact = false
+end
+function on_message(____self, message_id, message)
+    if message_id == "contact_point_response" then
+        local contact = message
+        if contact.group == group_obstacle then
+            handle_obstacle_contact(_G, ____self, contact.normal, contact.distance)
+        end
+    end
+end
+function on_input(____self, action_id, action)
+    if action_id == input_left then
+        walk(_G, ____self, -(action.value or 0))
+    elseif action_id == input_right then
+        walk(_G, ____self, action.value or 0)
+    elseif action_id == input_jump then
+        if action.pressed then
+            jump(_G, ____self)
+        elseif action.released then
+            abort_jump(_G, ____self)
+        end
+    end
+end
+return ____exports
+
+--# sourceMappingURL=player.lua.map
