@@ -73,7 +73,8 @@ Defold calls three per-frame hooks, all sharing the `(self, dt) => void` shape w
 | `late_update` | every frame, after `update` and animation/physics have run |
 
 ```ts
-export default defineScript<{ velocity: number }>({
+export default defineScript({
+  init: () => ({ velocity: 0 }),
   update(self, dt) {
     self.velocity *= 1 - dt;
   },
