@@ -81,6 +81,122 @@ const VSCODE_SETTINGS_CONTENT = {
   "Lua.workspace.ignoreDir": ["src"],
 };
 
+interface VscodeSnippet {
+  scope: string;
+  prefix: string;
+  body: string[];
+  description: string;
+}
+
+// Whole-file TS scaffolds mirroring the Defold editor's empty script/gui/render
+// templates over the lifecycle factories. Two self-typing variants per kind:
+// inline-self (TSelf inferred from `init`'s return) and typed-self (an explicit
+// dummy `Self` placeholder). Hook order mirrors the Lua templates; render omits
+// `on_input` because `RenderScriptHooks` does. The final `$0` lands inside `init`.
+function inlineSnippetBody(factory: string, includeOnInput: boolean): string[] {
+  const lines = [
+    `import { ${factory} } from "@defold-typescript/types";`,
+    "",
+    `export const script = ${factory}({`,
+    "  // Initialize the component and return its state.",
+    "  init() {",
+    "    return { $0 };",
+    "  },",
+    "  // Update the component every frame; `dt` is the time step.",
+    "  update(self, dt) {$1},",
+    "  // Update at the fixed physics time step.",
+    "  fixed_update(self, dt) {$2},",
+    "  // Update every frame after `update`.",
+    "  late_update(self, dt) {$3},",
+    "  // Handle an incoming message.",
+    "  on_message(self, message_id, message, sender) {$4},",
+  ];
+  if (includeOnInput) {
+    lines.push("  // Handle input once input focus is acquired.");
+    lines.push("  on_input(self, action_id, action) {$5},");
+  }
+  lines.push("  // Clean up when the component is deleted.");
+  lines.push("  final(self) {$6},");
+  lines.push("  // React to a hot reload of this script.");
+  lines.push("  on_reload(self) {$7},");
+  lines.push("});");
+  return lines;
+}
+
+function typedSnippetBody(factory: string, includeOnInput: boolean): string[] {
+  const lines = [
+    `import { ${factory} } from "@defold-typescript/types";`,
+    "",
+    "type Self = {",
+    "  // Your script's state goes here.",
+    "  $1",
+    "};",
+    "",
+    `export const script = ${factory}<Self>({`,
+    "  // Initialize the component and return its state.",
+    "  init(): Self {",
+    "    return { $0 };",
+    "  },",
+    "  // Update the component every frame; `dt` is the time step.",
+    "  update(self, dt) {$2},",
+    "  // Update at the fixed physics time step.",
+    "  fixed_update(self, dt) {$3},",
+    "  // Update every frame after `update`.",
+    "  late_update(self, dt) {$4},",
+    "  // Handle an incoming message.",
+    "  on_message(self, message_id, message, sender) {$5},",
+  ];
+  if (includeOnInput) {
+    lines.push("  // Handle input once input focus is acquired.");
+    lines.push("  on_input(self, action_id, action) {$6},");
+  }
+  lines.push("  // Clean up when the component is deleted.");
+  lines.push("  final(self) {$7},");
+  lines.push("  // React to a hot reload of this script.");
+  lines.push("  on_reload(self) {$8},");
+  lines.push("});");
+  return lines;
+}
+
+const VSCODE_SNIPPETS_CONTENT: Record<string, VscodeSnippet> = {
+  "Defold script (inferred self)": {
+    scope: "typescript",
+    prefix: "defold-script",
+    body: inlineSnippetBody("defineScript", true),
+    description: "Empty Defold script; state inferred from init's return.",
+  },
+  "Defold script (typed self)": {
+    scope: "typescript",
+    prefix: "defold-script-typed",
+    body: typedSnippetBody("defineScript", true),
+    description: "Empty Defold script with an explicit Self type.",
+  },
+  "Defold GUI script (inferred self)": {
+    scope: "typescript",
+    prefix: "defold-gui",
+    body: inlineSnippetBody("defineGuiScript", true),
+    description: "Empty Defold GUI script; state inferred from init's return.",
+  },
+  "Defold GUI script (typed self)": {
+    scope: "typescript",
+    prefix: "defold-gui-typed",
+    body: typedSnippetBody("defineGuiScript", true),
+    description: "Empty Defold GUI script with an explicit Self type.",
+  },
+  "Defold render script (inferred self)": {
+    scope: "typescript",
+    prefix: "defold-render",
+    body: inlineSnippetBody("defineRenderScript", false),
+    description: "Empty Defold render script; state inferred from init's return.",
+  },
+  "Defold render script (typed self)": {
+    scope: "typescript",
+    prefix: "defold-render-typed",
+    body: typedSnippetBody("defineRenderScript", false),
+    description: "Empty Defold render script with an explicit Self type.",
+  },
+};
+
 const MAIN_TS_CONTENT = `export function init(): void {
   const start = vmath.vector3(0, 0, 0);
   msg.post("main:/hero", "spawn", { start });
@@ -301,6 +417,27 @@ function writeVscodeSettings(cwd: string, written: string[]): void {
   written.push(".vscode/settings.json");
 }
 
+function writeVscodeSnippets(cwd: string, written: string[]): void {
+  const dir = path.join(cwd, ".vscode");
+  const filePath = path.join(dir, "defold-typescript.code-snippets");
+  if (existsSync(filePath)) {
+    const existing = readVscodeJson(filePath);
+    if (existing === null) {
+      return;
+    }
+    for (const [key, snippet] of Object.entries(VSCODE_SNIPPETS_CONTENT)) {
+      if (!(key in existing)) {
+        existing[key] = snippet;
+      }
+    }
+    writeJson(filePath, existing);
+    return;
+  }
+  mkdirSync(dir, { recursive: true });
+  writeJson(filePath, VSCODE_SNIPPETS_CONTENT);
+  written.push(".vscode/defold-typescript.code-snippets");
+}
+
 function writeTsSurface(cwd: string, written: string[], force = false): ScriptKind | null {
   mkdirSync(path.join(cwd, "src"), { recursive: true });
   writeFileSync(path.join(cwd, "src", "main.ts"), MAIN_TS_CONTENT);
@@ -349,6 +486,7 @@ function writeTsSurface(cwd: string, written: string[], force = false): ScriptKi
 
   writeVscodeExtensions(cwd, written);
   writeVscodeSettings(cwd, written);
+  writeVscodeSnippets(cwd, written);
 
   return selectScriptKind(kinds);
 }

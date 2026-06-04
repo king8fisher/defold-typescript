@@ -30,8 +30,24 @@ Avoid the Roblox **Luau Language Server** (`johnnymorganz.luau-lsp`) in a Defold
 
 - `extensions.json` recommends sumneko Lua + Defold Kit and marks the Luau LSP as unwanted.
 - `settings.json` sets `Lua.workspace.ignoreDir: ["src"]` so sumneko does not lint the generated `*.ts.script` output (which would flag TSTL-emitted `self` parameters as unused). Hand-written Defold `.script` files under `main/` stay analyzed.
+- `defold-typescript.code-snippets` expands an empty script over the lifecycle factories (the TypeScript equivalent of the Defold editor's "new script" templates).
 
-Both files merge additively into any `.vscode/` config you already have, so your own recommendations and settings are preserved.
+All three files merge additively into any `.vscode/` config you already have, so your own recommendations, settings, and snippets are preserved.
+
+## Script snippets
+
+In any `.ts` file, type one of these prefixes and accept the completion to scaffold a whole empty script over `defineScript` / `defineGuiScript` / `defineRenderScript`:
+
+| Prefix | Scaffolds |
+| --- | --- |
+| `defold-script` | script, state inferred from `init` |
+| `defold-script-typed` | script, explicit `Self` type |
+| `defold-gui` | GUI script, state inferred from `init` |
+| `defold-gui-typed` | GUI script, explicit `Self` type |
+| `defold-render` | render script, state inferred from `init` |
+| `defold-render-typed` | render script, explicit `Self` type |
+
+The two variants mirror the two self-typing idioms (see [Script lifecycle](script-lifecycle.md)). The inferred variant returns an inline object from `init`, and `TSelf` follows that return — the documented default. The typed variant declares a named `Self` type and passes it explicitly as `defineScript<Self>(…)`, the escape hatch for when you want to name the state shape up front. Render snippets omit `on_input`, which `RenderScriptHooks` does not expose.
 
 Edit TypeScript under `src/`. Treat the generated `.ts.script` and `.ts.script.map` files next to your sources as build output; the scaffolded `.gitignore` keeps them out of version control.
 
