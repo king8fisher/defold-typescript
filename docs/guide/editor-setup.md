@@ -18,7 +18,7 @@ Defold runs standard Lua 5.1 (LuaJIT), **not** Luau — Luau is Roblox's dialect
 
 - TypeScript support: built into VSCode.
 - [sumneko Lua](https://marketplace.visualstudio.com/items?itemName=sumneko.lua) (`sumneko.lua`): the Lua language server.
-- [Defold Kit](https://marketplace.visualstudio.com/items?itemName=astrochili.defold) (`astrochili.defold`): version-syncs the Defold Lua annotations, so `vmath`, `msg`, `go`, and friends resolve without manual globals config.
+- [Defold Kit](https://marketplace.visualstudio.com/items?itemName=astronachos.defold) (`astronachos.defold`): version-syncs the Defold Lua annotations, so `vmath`, `msg`, `go`, and friends resolve without manual globals config.
 
 Avoid the Roblox **Luau Language Server** (`johnnymorganz.luau-lsp`) in a Defold project. It reports `Failed to load sourcemap.json` and bogus diagnostics, because it expects a Roblox/Rojo `sourcemap.json` — an artifact this toolchain never produces. The `*.lua.map` files next to your output are TSTL source maps, unrelated to Roblox's `sourcemap.json`.
 

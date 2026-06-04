@@ -508,7 +508,7 @@ describe("runInit (.vscode editor config)", () => {
 
     const ext = readJson(".vscode/extensions.json");
     expect(ext.recommendations).toContain("sumneko.lua");
-    expect(ext.recommendations).toContain("astrochili.defold");
+    expect(ext.recommendations).toContain("astronachos.defold");
     expect(ext.unwantedRecommendations).toContain("johnnymorganz.luau-lsp");
   });
 
@@ -545,7 +545,7 @@ describe("runInit (.vscode editor config)", () => {
     const ext = readJson(".vscode/extensions.json");
     expect(ext.recommendations).toContain("dbaeumer.vscode-eslint");
     expect(ext.recommendations).toContain("sumneko.lua");
-    expect(ext.recommendations).toContain("astrochili.defold");
+    expect(ext.recommendations).toContain("astronachos.defold");
     expect(ext.someOtherKey).toBe(42);
     const recs = ext.recommendations as string[];
     expect(recs.length).toBe(new Set(recs).size);

@@ -73,7 +73,7 @@ const BIOME_JSON_CONTENT = {
 };
 
 const VSCODE_EXTENSIONS_CONTENT = {
-  recommendations: ["sumneko.lua", "astrochili.defold"],
+  recommendations: ["sumneko.lua", "astronachos.defold"],
   unwantedRecommendations: ["johnnymorganz.luau-lsp"],
 };
 
