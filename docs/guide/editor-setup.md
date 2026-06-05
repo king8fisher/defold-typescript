@@ -16,6 +16,8 @@ VSCode's built-in TypeScript support reads this file automatically when the proj
 
 The generated type declarations carry the Defold reference docs inline as JSDoc. Hovering a Defold symbol in `src/*.ts` shows its description straight from the engine API docs — functions also list each parameter (`@param`) and their return (`@returns`), plus a worked `@example` code block (rendered as Lua) when the engine docs ship one; constants, variables, and component `properties` show a summary line. No extra extension required, since it rides on VSCode's built-in TypeScript support. Autocomplete surfaces the same text. Undocumented engine symbols simply show their signature with no description.
 
+Hover docs reach beyond the generated signatures: the overloaded facades (`msg.post`, `go.get`/`go.set`) and the hand-authored helpers (`isMessage`, `onMessage`) carry the same summary + `@param` + `@returns` + `@example` blocks, so the receive-side message helpers hover as richly as the generated namespace API.
+
 ## Recommended editor extensions
 
 Defold runs standard Lua 5.1 (LuaJIT), **not** Luau — Luau is Roblox's dialect. Install the Lua tooling that matches:
