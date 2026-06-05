@@ -130,4 +130,9 @@ describe("docs/guide scaffold", () => {
     const body = await readGuide("getting-started.md");
     expect(body).toContain("typescript-vs-lua.md");
   });
+
+  test("docs/guide/debugging.md points at the pinned lldebugger release URL", async () => {
+    const body = await readGuide("debugging.md");
+    expect(body).toContain("releases/download/lldebugger-v1/lldebugger.zip");
+  });
 });

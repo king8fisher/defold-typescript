@@ -19,10 +19,10 @@ The launcher is **Bun, not a shell script**. The upstream `lua-local` template r
 2. **Add the `lldebugger` library to Defold.** In `game.project`, add the dependency:
 
    ```
-   https://github.com/ts-defold/defold-lldebugger/archive/extension.zip
+   https://github.com/king8fisher/defold-typescript/releases/download/lldebugger-v1/lldebugger.zip
    ```
 
-   Then run *Project -> Fetch Libraries* in the Defold editor so the `lldebugger` Lua module is available to `require`.
+   This is our vendored, MIT-licensed snapshot of `ts-defold/defold-lldebugger`, hosted from this repo's releases — that is why the URL differs from the upstream docs. Then run *Project -> Fetch Libraries* in the Defold editor so the `lldebugger` Lua module is available to `require`.
 
 3. **Start the debugger from your entry script.** Add the debugger entry near the top of your main script, gated so it only runs in a debug build:
 
