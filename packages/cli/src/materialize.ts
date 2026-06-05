@@ -65,8 +65,8 @@ export function materializeApiSurface(
   // surface silently drops those globals. Skipped when the source has no
   // sibling `src/` (e.g. synthetic test fixtures).
   const srcDir = path.resolve(sourceGeneratedDir, "..", "src");
-  const overloads = ["msg-overloads.d.ts", "go-overloads.d.ts"].filter((file) =>
-    existsSync(path.join(srcDir, file)),
+  const overloads = ["msg-overloads.d.ts", "message-guard.d.ts", "go-overloads.d.ts"].filter(
+    (file) => existsSync(path.join(srcDir, file)),
   );
   const coreTypesSrc = path.join(srcDir, "core-types.ts");
   const includeCoreTypes = overloads.length > 0 && existsSync(coreTypesSrc);

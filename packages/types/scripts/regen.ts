@@ -209,6 +209,7 @@ export const RESTRICTED_NAMESPACES: Readonly<Record<string, string>> = {
 const UNIVERSAL_EXTRA_IMPORTS: readonly string[] = [
   "../builtin-messages",
   "../../src/msg-overloads",
+  "../../src/message-guard",
   "../../src/go-overloads",
 ];
 

@@ -1,4 +1,5 @@
 import "../../src/go-overloads";
+import "../../src/message-guard";
 import "../../src/msg-overloads";
 import "../b2d";
 import "../buffer";
