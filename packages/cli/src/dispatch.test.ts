@@ -61,6 +61,55 @@ describe("dispatch", () => {
     expect(out()).toMatch(/defold-typescript init: wrote/);
   });
 
+  test("init prints the install reminder after the wrote-files line", () => {
+    writeFileSync(path.join(cwd, "game.project"), "[project]\n");
+    const { io, out, err } = captureStreams();
+
+    const code = dispatch(["init", cwd], io);
+
+    expect(code).toBe(0);
+    expect(err()).toBe("");
+    const text = out();
+    expect(text).toMatch(/install/);
+    expect(text.indexOf("install")).toBeGreaterThan(text.indexOf("wrote"));
+  });
+
+  test("init --suppress-install-reminder writes wrote-files but no reminder", () => {
+    writeFileSync(path.join(cwd, "game.project"), "[project]\n");
+    const { io, out, err } = captureStreams();
+
+    const code = dispatch(["init", cwd, "--suppress-install-reminder"], io);
+
+    expect(code).toBe(0);
+    expect(err()).toBe("");
+    const text = out();
+    expect(text).toMatch(/wrote/);
+    expect(text).not.toMatch(/Next: run/);
+  });
+
+  test("--suppress-install-reminder is stripped from positionals", () => {
+    writeFileSync(path.join(cwd, "game.project"), "[project]\n");
+    const { io, out, err } = captureStreams();
+
+    const code = dispatch(["init", cwd, "--suppress-install-reminder"], io);
+
+    expect(code).toBe(0);
+    expect(err()).toBe("");
+    expect(out()).toMatch(/defold-typescript init: wrote/);
+  });
+
+  test("init --json emits installCommand even with --suppress-install-reminder", () => {
+    writeFileSync(path.join(cwd, "game.project"), "[project]\n");
+    const { io, out } = captureStreams();
+
+    const code = dispatch(["init", cwd, "--json", "--suppress-install-reminder"], io);
+
+    expect(code).toBe(0);
+    const parsed = JSON.parse(out()) as { installCommand?: string };
+    expect(typeof parsed.installCommand).toBe("string");
+    expect(parsed.installCommand).toMatch(/install$/);
+  });
+
   test("init failure writes error message to stderr and returns 1", () => {
     writeFileSync(path.join(cwd, "README.md"), "stray\n");
     const { io, out, err } = captureStreams();

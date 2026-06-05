@@ -8,6 +8,7 @@ export interface RenderResultInput {
   readonly apiSurface?: string | null;
   readonly scriptKind?: string | null;
   readonly materializedSurface?: string | null;
+  readonly installCommand?: string;
 }
 
 export function renderResult(input: RenderResultInput): string {
@@ -21,9 +22,13 @@ export function renderResult(input: RenderResultInput): string {
     "apiSurface" in input ? { ...withVersion, apiSurface: input.apiSurface } : withVersion;
   const withScriptKind =
     "scriptKind" in input ? { ...withSurface, scriptKind: input.scriptKind } : withSurface;
-  const payload =
+  const withMaterialized =
     "materializedSurface" in input
       ? { ...withScriptKind, materializedSurface: input.materializedSurface }
       : withScriptKind;
+  const payload =
+    "installCommand" in input
+      ? { ...withMaterialized, installCommand: input.installCommand }
+      : withMaterialized;
   return `${JSON.stringify(payload)}\n`;
 }
