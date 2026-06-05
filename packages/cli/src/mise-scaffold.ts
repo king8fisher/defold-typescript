@@ -8,7 +8,8 @@ const MANAGED_MARKER = "# managed by @defold-typescript";
 // fetches from the registry — that is the installed-version contract the types
 // pin upholds, while staying cross-platform (the bare `node_modules/.bin` path
 // is `.cmd`-shimmed on Windows). `:upgrade` is the deliberate `@latest` pull
-// that re-pins `@defold-typescript/types` via `init --force` + reinstall.
+// that re-pins `@defold-typescript/types` via `init --force` + reinstall; it
+// suppresses the install reminder because its second command already reinstalls.
 export const MISE_TASKS_TOML = `${MANAGED_MARKER}
 [tasks."defold-typescript:build"]
 description = "Build the TypeScript sources with the installed defold-typescript CLI"
@@ -22,7 +23,7 @@ run = "bunx --no-install defold-typescript watch"
 ${MANAGED_MARKER}
 [tasks."defold-typescript:upgrade"]
 description = "Upgrade the defold-typescript CLI to its latest release and re-pin the types dependency"
-run = ["bunx @defold-typescript/cli@latest init --force", "bun install"]
+run = ["bunx @defold-typescript/cli@latest init --force --suppress-install-reminder", "bun install"]
 `;
 
 // Drop every managed block (marker line through the next blank line or EOF),

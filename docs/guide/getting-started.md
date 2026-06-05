@@ -55,7 +55,11 @@ Run `bun install` once after `init`. The scaffold only declares its
 `devDependencies` (`@defold-typescript/types` for the editor's ambient Defold
 types, `@biomejs/biome` for lint and format) — `install` is what actually puts
 them in `node_modules`. Skip it and your editor reports the Defold globals as
-unresolved.
+unresolved. `init` does not install for you (that keeps scaffolding offline), so
+it prints a `Next: run <pm> install` reminder once it finishes, picking the
+package manager from the runner that invoked it (`bun`/`npm`/`pnpm`/`yarn`,
+falling back to `bun`). Pass `--suppress-install-reminder` to silence that line
+when you install through your own tooling.
 
 The scaffold also ships an opinionated `biome.json`, so the project lints and formats cleanly out of the box. An existing `biome.json` is left untouched.
 

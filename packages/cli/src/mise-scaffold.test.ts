@@ -15,7 +15,7 @@ describe("MISE_TASKS_TOML", () => {
 
   test("upgrade is the two-command @latest init --force then bun install array", () => {
     expect(MISE_TASKS_TOML).toContain(
-      'run = ["bunx @defold-typescript/cli@latest init --force", "bun install"]',
+      'run = ["bunx @defold-typescript/cli@latest init --force --suppress-install-reminder", "bun install"]',
     );
   });
 

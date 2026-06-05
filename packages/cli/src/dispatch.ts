@@ -6,6 +6,7 @@ import { runBuild } from "./build";
 import { readCliVersion } from "./cli-version";
 import { readDefoldVersionPin, resolveDefoldVersion } from "./defold-version";
 import { runInit } from "./init";
+import { installHint } from "./install-reminder";
 import { renderResult } from "./json-output";
 import {
   ensureMaterializedReference,
@@ -88,8 +89,11 @@ export function dispatch(
   }
 
   const force = argv.includes("--force");
+  const suppressInstallReminder = argv.includes("--suppress-install-reminder");
   const { flag: defoldVersionFlag, rest: nonFlagArgs } = parseDefoldVersionFlag(argv);
-  const positional = nonFlagArgs.filter((a) => a !== "--json" && a !== "--force");
+  const positional = nonFlagArgs.filter(
+    (a) => a !== "--json" && a !== "--force" && a !== "--suppress-install-reminder",
+  );
   const [command, ...rest] = positional;
   const cwd = rest[0] ? path.resolve(rest[0]) : process.cwd();
 
@@ -112,12 +116,16 @@ export function dispatch(
             defoldVersion: resolvedVersion,
             apiSurface,
             scriptKind,
+            installCommand: installHint(),
           }),
         );
       } else {
         io.stdout.write(
           `defold-typescript init: wrote ${written.length} files: ${written.join(", ")}\n`,
         );
+        if (!suppressInstallReminder) {
+          io.stdout.write(`Next: run \`${installHint()}\` to install dependencies.\n`);
+        }
       }
       return 0;
     } catch (err) {
