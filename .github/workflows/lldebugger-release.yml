@@ -1,0 +1,38 @@
+# Publish trigger: `git tag lldebugger-v1 && git push --tags` (or run manually
+# via the Actions tab). Builds the vendored lldebugger Defold library archive
+# and uploads it as a versioned GitHub Release asset named `lldebugger.zip`,
+# giving the guide a stable `releases/download/<tag>/lldebugger.zip` URL.
+#
+# Separate from the parked npm `release.yml`: that one publishes npm packages and
+# is blocked on a lockfile bug; this artifact is a Defold zip, unrelated.
+
+name: lldebugger Release
+
+on:
+  push:
+    tags:
+      - "lldebugger-v*"
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build:lldebugger
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            TAG="lldebugger-dispatch-${GITHUB_SHA}"
+          fi
+          gh release create "$TAG" dist/lldebugger.zip \
+            --title "lldebugger $TAG" \
+            --notes "Vendored Defold lldebugger library archive. Fetch Libraries URL: https://github.com/king8fisher/defold-typescript/releases/download/$TAG/lldebugger.zip" \
+            || gh release upload "$TAG" dist/lldebugger.zip --clobber
