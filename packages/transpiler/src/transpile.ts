@@ -4,6 +4,7 @@ import * as path from "node:path";
 import type * as ts from "typescript";
 import * as tstl from "typescript-to-lua";
 import { lifecycleErasurePlugin } from "./lifecycle-erasure";
+import { messageGuardLoweringPlugin } from "./message-guard-lowering";
 
 export interface TranspileResult {
   readonly lua: string;
@@ -56,6 +57,8 @@ function buildAmbientFiles(): Record<string, string> {
     "node_modules/@defold-typescript/types/src/core-types.ts": readAmbient("src/core-types.ts"),
     "node_modules/@defold-typescript/types/src/msg-overloads.d.ts":
       readAmbient("src/msg-overloads.d.ts"),
+    "node_modules/@defold-typescript/types/src/message-guard.d.ts":
+      readAmbient("src/message-guard.d.ts"),
     "node_modules/@defold-typescript/types/src/lifecycle.ts": readAmbient("src/lifecycle.ts"),
     // Mirror the consumer-facing re-exports of the real package index so a user
     // file can `import { defineScript }` and `import type { Hash, Vector3 }`.
@@ -134,7 +137,7 @@ export function transpileProject(input: TranspileProjectInput): TranspileProject
     // Defold scripts are not OO: free helper functions never receive a context,
     // so suppress TSTL's implicit `self` parameter and the `_G` call-site filler.
     noImplicitSelf: true,
-    luaPlugins: [{ plugin: lifecycleErasurePlugin }],
+    luaPlugins: [{ plugin: lifecycleErasurePlugin }, { plugin: messageGuardLoweringPlugin }],
   });
 
   return collectOutputs(result.transpiledFiles, result.diagnostics, userKeys);

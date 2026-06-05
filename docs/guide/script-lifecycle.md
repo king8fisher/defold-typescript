@@ -84,6 +84,28 @@ export default defineScript({
 });
 ```
 
+## Receiving messages with type narrowing
+
+`on_message` delivers `message_id` as a `Hash` (Defold pre-hashes it) and `message` as an untyped record. Because the id arrives already hashed, the string literal a discriminated union would switch on is gone — TypeScript cannot automatically narrow `message` from a runtime `Hash` comparison. The `isMessage` type guard re-introduces the literal at the use site and narrows the payload to its `BuiltinMessages` shape:
+
+```ts
+export default defineScript({
+  on_message(self, message_id, message) {
+    if (isMessage(message_id, message, "contact_point_response")) {
+      // message: { position: Vector3; normal: Vector3; distance: number;
+      //            other_group: Hash; own_group: Hash; ... } — no cast.
+      if (message.other_group === hash("ground")) {
+        go.set_position(go.get_position().add(message.normal.mul(message.distance)));
+      }
+    }
+  },
+});
+```
+
+`isMessage` is the receive-side mirror of `msg.post`'s send-side narrowing: `msg.post(receiver, "contact_point_response", payload)` checks the payload against `BuiltinMessages["contact_point_response"]`, and `isMessage(message_id, message, "contact_point_response")` narrows a received `message` to the same shape. It is a global — no import — and an unknown message id (`isMessage(message_id, message, "not_a_message")`) is a compile error.
+
+The guard ships only as a type declaration; the transpiler lowers the call to its runtime form `message_id == hash("contact_point_response")`, so the types package emits no runtime Lua.
+
 ## API availability by script kind
 
 Defold scopes two namespaces to a script kind: `gui.*` resolves only inside a `.gui_script`, and `render.*` only inside a `.render_script`. Every other namespace (`go`, `msg`, `vmath`, `sys`, `physics`, …) is available in every kind.

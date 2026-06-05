@@ -11,9 +11,10 @@ const gravity = -1900;
 // Take-off speed when jumping in pixel units.
 const jump_takeoff_speed = 1200;
 
-// Pre-hashed ids. In Defold these are hash() handles. message_id, action_id,
-// and group are all delivered as hashes, so every comparison is Hash vs Hash.
-const msg_contact_point_response = hash("contact_point_response");
+// Pre-hashed ids. In Defold these are hash() handles. action_id and group are
+// delivered as hashes, so every comparison is Hash vs Hash. The message_id is
+// matched with the `isMessage` type guard, which narrows the payload and lowers
+// to a `hash("...")` comparison, so no hand-rolled message-id constant is needed.
 const group_obstacle = hash("ground");
 const input_left = hash("left");
 const input_right = hash("right");
@@ -38,16 +39,6 @@ function createPlayerSelf() {
 }
 
 type PlayerSelf = ReturnType<typeof createPlayerSelf>;
-
-// The contact_point_response fields this script reads. on_message delivers the
-// payload as an untyped record, so we cast to the subset we use. (The typed
-// contact_point_response payload also lacks `group` today — it exposes only
-// own_group/other_group, a builtin-messages fidelity gap.)
-interface ContactPoint {
-  group: Hash;
-  normal: Vector3;
-  distance: number;
-}
 
 function play_animation(self: PlayerSelf, anim: Hash): void {
   // Only play animations which are not already playing.
@@ -158,11 +149,11 @@ export default defineScript({
   },
 
   on_message(self, message_id, message) {
-    if (message_id === msg_contact_point_response) {
-      const contact = message as unknown as ContactPoint;
+    if (isMessage(message_id, message, "contact_point_response")) {
+      // `message` is now the typed contact_point_response payload — no cast.
       // Check that the object is something we consider an obstacle.
-      if (contact.group === group_obstacle) {
-        handle_obstacle_contact(self, contact.normal, contact.distance);
+      if (message.other_group === group_obstacle) {
+        handle_obstacle_contact(self, message.normal, message.distance);
       }
     }
   },

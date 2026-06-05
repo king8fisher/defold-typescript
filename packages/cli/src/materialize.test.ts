@@ -103,15 +103,21 @@ describe("materializeApiSurface", () => {
         path.join(src, "go-overloads.d.ts"),
         "declare global {\n  namespace go {\n    function get(): void;\n  }\n}\nexport {};\n",
       );
+      writeFileSync(
+        path.join(src, "message-guard.d.ts"),
+        'import type { Hash } from "./core-types";\ndeclare global {\n  function isMessage(id: Hash, m: Record<string, unknown>, e: string): m is Record<string, unknown>;\n}\nexport {};\n',
+      );
 
       materializeApiSurface({ cwd, surface: CURRENT, sourceGeneratedDir: gen });
 
       const dir = path.join(cwd, ".defold-types", "defold-1.12.4");
       expect(existsSync(path.join(dir, "msg-overloads.d.ts"))).toBe(true);
+      expect(existsSync(path.join(dir, "message-guard.d.ts"))).toBe(true);
       expect(existsSync(path.join(dir, "go-overloads.d.ts"))).toBe(true);
       expect(existsSync(path.join(dir, "core-types.d.ts"))).toBe(true);
       const index = readFileSync(path.join(dir, "index.d.ts"), "utf8");
       expect(index).toContain('import "./msg-overloads";');
+      expect(index).toContain('import "./message-guard";');
       expect(index).toContain('import "./go-overloads";');
     } finally {
       rmSync(root, { recursive: true, force: true });
