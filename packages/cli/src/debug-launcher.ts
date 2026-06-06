@@ -34,8 +34,8 @@ const PLATFORM_TARGETS: Record<string, EngineTarget> = {
   },
 };
 
-const ENGINE_INFO_URL = "https://d.defold.com/stable/info.json";
-const ENGINE_ARCHIVE_BASE = "https://d.defold.com/archive/stable";
+export const ENGINE_INFO_URL = "https://d.defold.com/stable/info.json";
+export const ENGINE_ARCHIVE_BASE = "https://d.defold.com/archive/stable";
 
 export const DEBUG_LAUNCHER_REL = ".vscode/defold-debug.ts";
 
