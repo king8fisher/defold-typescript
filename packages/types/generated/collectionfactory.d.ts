@@ -38,37 +38,40 @@ declare global {
      * @param scale - uniform scaling to apply to the newly spawned collection (must be greater than 0).
      * @returns a table mapping the id:s from the collection to the new instance id:s
      * @example
-     * ```lua
-     * How to spawn a collection of game objects:
-     * function init(self)
-     *   -- Spawn a small group of enemies.
-     *   local pos = vmath.vector3(100, 12.5, 0)
-     *   local rot = vmath.quat_rotation_z(math.pi / 2)
-     *   local scale = 0.5
-     *   local props = {}
-     *   props[hash("/enemy_leader")] = { health = 1000.0 }
-     *   props[hash("/enemy_1")] = { health = 200.0 }
-     *   props[hash("/enemy_2")] = { health = 400.0, color = hash("green") }
+     * ```ts
+     * // How to spawn a collection of game objects:
+     * export default defineScript({
+     *   init(self) {
+     *     // Spawn a small group of enemies.
+     *     const pos = vmath.vector3(100, 12.5, 0);
+     *     const rot = vmath.quat_rotation_z(Math.PI / 2);
+     *     const scale = 0.5;
+     *     const props = {
+     *       [hash("/enemy_leader")]: { health: 1000.0 },
+     *       [hash("/enemy_1")]: { health: 200.0 },
+     *       [hash("/enemy_2")]: { health: 400.0, color: hash("green") },
+     *     };
      *
-     *   local self.enemy_ids = collectionfactory.create("#enemyfactory", pos, rot, props, scale)
-     *   -- enemy_ids now map to the spawned instance ids:
-     *   --
-     *   -- pprint(self.enemy_ids)
-     *   --
-     *   -- DEBUG:SCRIPT:
-     *   -- {
-     *   --   hash: [/enemy_leader] = hash: [/collection0/enemy_leader],
-     *   --   hash: [/enemy_1] = hash: [/collection0/enemy_1],
-     *   --   hash: [/enemy_2] = hash: [/collection0/enemy_2]
-     *   -- }
+     *     self.enemy_ids = collectionfactory.create("#enemyfactory", pos, rot, props, scale);
+     *     // enemy_ids now map to the spawned instance ids:
+     *     //
+     *     // pprint(self.enemy_ids)
+     *     //
+     *     // DEBUG:SCRIPT:
+     *     // {
+     *     //   hash: [/enemy_leader] = hash: [/collection0/enemy_leader],
+     *     //   hash: [/enemy_1] = hash: [/collection0/enemy_1],
+     *     //   hash: [/enemy_2] = hash: [/collection0/enemy_2]
+     *     // }
      *
-     *   -- Send "attack" message to the leader. First look up its instance id.
-     *   local leader_id = self.enemy_ids[hash("/enemy_leader")]
-     *   msg.post(leader_id, "attack")
-     * end
+     *     // Send "attack" message to the leader. First look up its instance id.
+     *     const leader_id = self.enemy_ids[hash("/enemy_leader")];
+     *     msg.post(leader_id, "attack");
+     *   },
+     * });
      *
-     * How to delete a spawned collection:
-     * go.delete(self.enemy_ids)
+     * // How to delete a spawned collection:
+     * go.delete(self.enemy_ids);
      * ```
      */
     function create(url: string | Hash | Url, position?: Vector3, rotation?: Quaternion, properties?: Record<string | number, unknown>, scale?: number | Vector3): Record<string | number, unknown>;
@@ -96,9 +99,9 @@ declare global {
      * `result`
      * boolean True if resource were loaded successfully
      * @example
-     * ```lua
-     * How to load resources of a collection factory prototype.
-     * collectionfactory.load("#factory", function(self, url, result) end)
+     * ```ts
+     * // How to load resources of a collection factory prototype.
+     * collectionfactory.load("#factory", (self, url, result) => {});
      * ```
      */
     function load(url?: string | Hash | Url, complete_function?: (self: unknown, url: unknown, result: unknown) => void): void;
@@ -109,11 +112,11 @@ declare global {
      * @param url - the collection factory component
      * @param prototype - the path to the new prototype, or `nil`
      * @example
-     * ```lua
-     * How to unload the previous prototypes resources, and then spawn a new collection
-     * collectionfactory.unload("#factory") -- unload the previous resources
-     * collectionfactory.set_prototype("#factory", "/main/levels/level1.collectionc")
-     * local ids = collectionfactory.create("#factory", go.get_world_position(), vmath.quat())
+     * ```ts
+     * // How to unload the previous prototype's resources, and then spawn a new collection:
+     * collectionfactory.unload("#factory"); // unload the previous resources
+     * collectionfactory.set_prototype("#factory", "/main/levels/level1.collectionc");
+     * const ids = collectionfactory.create("#factory", go.get_world_position(), vmath.quat());
      * ```
      */
     function set_prototype(url?: string | Hash | Url, prototype?: string): void;
@@ -123,9 +126,9 @@ declare global {
      *
      * @param url - the collection factory component to unload
      * @example
-     * ```lua
-     * How to unload resources of a collection factory prototype loaded with collectionfactory.load
-     * collectionfactory.unload("#factory")
+     * ```ts
+     * // How to unload resources of a collection factory prototype loaded with collectionfactory.load:
+     * collectionfactory.unload("#factory");
      * ```
      */
     function unload(url?: string | Hash | Url): void;
