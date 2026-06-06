@@ -9,11 +9,13 @@ declare global {
      * @param url - the label to get the text from
      * @returns the label text
      * @example
-     * ```lua
-     * function init(self)
-     *     local text = label.get_text("#label")
-     *     print(text)
-     * end
+     * ```ts
+     * export default defineScript({
+     *   init(self) {
+     *     const text = label.get_text("#label");
+     *     print(text);
+     *   },
+     * });
      * ```
      */
     function get_text(url: string | Hash | Url): string;
@@ -25,10 +27,12 @@ declare global {
      * @param url - the label that should have a constant set
      * @param text - the text
      * @example
-     * ```lua
-     * function init(self)
-     *     label.set_text("#label", "Hello World!")
-     * end
+     * ```ts
+     * export default defineScript({
+     *   init(self) {
+     *     label.set_text("#label", "Hello World!");
+     *   },
+     * });
      * ```
      */
     function set_text(url: string | Hash | Url, text: string | number): void;

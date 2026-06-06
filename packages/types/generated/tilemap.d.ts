@@ -32,9 +32,9 @@ declare global {
      *
      * @param url - the tile map
      * @example
-     * ```lua
-     * -- get the level bounds.
-     * local x, y, w, h = tilemap.get_bounds("/level#tilemap")
+     * ```ts
+     * // get the level bounds.
+     * const [x, y, w, h] = tilemap.get_bounds("/level#tilemap");
      * ```
      */
     function get_bounds(url: string | Hash | Url): LuaMultiReturn<[number, number, number, number]>;
@@ -51,9 +51,9 @@ declare global {
      * @param y - y-coordinate of the tile
      * @returns index of the tile
      * @example
-     * ```lua
-     * -- get the tile under the player.
-     * local tileno = tilemap.get_tile("/level#tilemap", "foreground", self.player_x, self.player_y)
+     * ```ts
+     * // get the tile under the player.
+     * const tileno = tilemap.get_tile("/level#tilemap", "foreground", self.player_x, self.player_y);
      * ```
      */
     function get_tile(url: string | Hash | Url, layer: string | Hash, x: number, y: number): number;
@@ -70,16 +70,16 @@ declare global {
      * @param y - y-coordinate of the tile
      * @returns index of the tile
      * @example
-     * ```lua
-     * -- get the tile under the player.
-     * local tile_info = tilemap.get_tile_info("/level#tilemap", "foreground", self.player_x, self.player_y)
-     * pprint(tile_info)
-     * -- {
-     * --    index = 0,
-     * --    h_flip = false,
-     * --    v_flip = true,
-     * --    rotate_90 = false
-     * -- }
+     * ```ts
+     * // get the tile under the player.
+     * const tile_info = tilemap.get_tile_info("/level#tilemap", "foreground", self.player_x, self.player_y);
+     * pprint(tile_info);
+     * // {
+     * //    index = 0,
+     * //    h_flip = false,
+     * //    v_flip = true,
+     * //    rotate_90 = false
+     * // }
      * ```
      */
     function get_tile_info(url: string | Hash | Url, layer: string | Hash, x: number, y: number): Record<string | number, unknown>;
@@ -93,16 +93,17 @@ declare global {
      * @param layer - the name of the layer for the tiles
      * @returns a table of rows representing the layer
      * @example
-     * ```lua
-     * local left, bottom, columns_count, rows_count = tilemap.get_bounds("#tilemap")
-     * local tiles = tilemap.get_tiles("#tilemap", "layer")
-     * local tile, count = 0, 0
-     * for row_index = bottom, bottom + rows_count - 1 do
-     *     for column_index = left, left + columns_count - 1 do
-     *         tile = tiles[row_index][column_index]
-     *         count = count + 1
-     *     end
-     * end
+     * ```ts
+     * const [left, bottom, columns_count, rows_count] = tilemap.get_bounds("#tilemap");
+     * const tiles = tilemap.get_tiles("#tilemap", "layer");
+     * let tile = 0;
+     * let count = 0;
+     * for (let row_index = bottom; row_index <= bottom + rows_count - 1; row_index++) {
+     *   for (let column_index = left; column_index <= left + columns_count - 1; column_index++) {
+     *     tile = tiles[row_index][column_index];
+     *     count = count + 1;
+     *   }
+     * }
      * ```
      */
     function get_tiles(url: string | Hash | Url, layer: string | Hash): Record<string | number, unknown>;
@@ -134,15 +135,15 @@ declare global {
      * @param tile - index of new tile to set. 0 resets the cell
      * @param transform_bitmask - optional flip and/or rotation should be applied to the tile
      * @example
-     * ```lua
-     * -- Clear the tile under the player.
-     * tilemap.set_tile("/level#tilemap", "foreground", self.player_x, self.player_y, 0)
+     * ```ts
+     * // Clear the tile under the player.
+     * tilemap.set_tile("/level#tilemap", "foreground", self.player_x, self.player_y, 0);
      *
-     * -- Set tile with different combination of flip and rotation
-     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.H_FLIP + tilemap.V_FLIP + tilemap.ROTATE_90)
-     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.H_FLIP + tilemap.ROTATE_270)
-     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.V_FLIP + tilemap.H_FLIP)
-     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.ROTATE_180)
+     * // Set tile with different combination of flip and rotation
+     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.H_FLIP + tilemap.V_FLIP + tilemap.ROTATE_90);
+     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.H_FLIP + tilemap.ROTATE_270);
+     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.V_FLIP + tilemap.H_FLIP);
+     * tilemap.set_tile("#tilemap", "layer1", x, y, 0, tilemap.ROTATE_180);
      * ```
      */
     function set_tile(url: string | Hash | Url, layer: string | Hash, x: number, y: number, tile: number, transform_bitmask?: number): void;
@@ -153,9 +154,9 @@ declare global {
      * @param layer - name of the layer for the tile
      * @param visible - should the layer be visible
      * @example
-     * ```lua
-     * -- Disable rendering of the layer
-     * tilemap.set_visible("/level#tilemap", "foreground", false)
+     * ```ts
+     * // Disable rendering of the layer
+     * tilemap.set_visible("/level#tilemap", "foreground", false);
      * ```
      */
     function set_visible(url: string | Hash | Url, layer: string | Hash, visible: boolean): void;

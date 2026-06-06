@@ -9,10 +9,10 @@ declare global {
      * @param group - group name
      * @returns gain in [0 1] range ([-60dB.. 0dB])
      * @example
-     * ```lua
-     * Get the mixer group gain for the "soundfx" and convert to dB:
-     * local gain = sound.get_group_gain("soundfx")
-     * local gain_db = 60 * gain
+     * ```ts
+     * // Get the mixer group gain for the "soundfx" and convert to dB:
+     * const gain = sound.get_group_gain("soundfx");
+     * const gain_db = 60 * gain;
      * ```
      */
     function get_group_gain(group: string | Hash): number;
@@ -25,13 +25,13 @@ declare global {
      * @param group - group name
      * @returns group name
      * @example
-     * ```lua
-     * Get the mixer group string names so we can show them as labels on a dev mixer overlay:
-     * local groups = sound.get_groups()
-     * for _,group in ipairs(groups) do
-     *     local name = sound.get_group_name(group)
-     *     msg.post("/mixer_overlay#gui", "set_mixer_label", { group = group, label = name})
-     * end
+     * ```ts
+     * // Get the mixer group string names so we can show them as labels on a dev mixer overlay:
+     * const groups = sound.get_groups();
+     * for (const group of groups) {
+     *   const name = sound.get_group_name(group);
+     *   msg.post("/mixer_overlay#gui", "set_mixer_label", { group: group, label: name });
+     * }
      * ```
      */
     function get_group_name(group: string | Hash): string;
@@ -40,17 +40,17 @@ declare global {
      *
      * @returns table of mixer group names
      * @example
-     * ```lua
-     * Get the mixer groups, set all gains to 0 except for "master" and "soundfx"
-     * where gain is set to 1:
-     * local groups = sound.get_groups()
-     * for _,group in ipairs(groups) do
-     *     if group == hash("master") or group == hash("soundfx") then
-     *         sound.set_group_gain(group, 1)
-     *     else
-     *         sound.set_group_gain(group, 0)
-     *     end
-     * end
+     * ```ts
+     * // Get the mixer groups, set all gains to 0 except for "master" and "soundfx"
+     * // where gain is set to 1:
+     * const groups = sound.get_groups();
+     * for (const group of groups) {
+     *   if (group === hash("master") || group === hash("soundfx")) {
+     *     sound.set_group_gain(group, 1);
+     *   } else {
+     *     sound.set_group_gain(group, 0);
+     *   }
+     * }
      * ```
      */
     function get_groups(): Hash[];
@@ -66,11 +66,11 @@ declare global {
      * @param group - group name
      * @param window - window length in seconds
      * @example
-     * ```lua
-     * Get the peak gain from the "master" group and convert to dB for displaying:
-     * local left_p, right_p = sound.get_peak("master", 0.1)
-     * left_p_db = 20 * log(left_p)
-     * right_p_db = 20 * log(right_p)
+     * ```ts
+     * // Get the peak gain from the "master" group and convert to dB for displaying:
+     * const [left_p, right_p] = sound.get_peak("master", 0.1);
+     * const left_p_db = 20 * Math.log(left_p);
+     * const right_p_db = 20 * Math.log(right_p);
      * ```
      */
     function get_peak(group: string | Hash, window: number): LuaMultiReturn<[number, number]>;
@@ -86,10 +86,10 @@ declare global {
      * @param group - group name
      * @param window - window length in seconds
      * @example
-     * ```lua
-     * Get the RMS from the "master" group where a mono -1.94 dB sinewave is playing:
-     * local rms = sound.get_rms("master", 0.1) -- throw away right channel.
-     * print(rms) --> 0.56555819511414
+     * ```ts
+     * // Get the RMS from the "master" group where a mono -1.94 dB sinewave is playing:
+     * const [rms] = sound.get_rms("master", 0.1); // throw away right channel.
+     * print(rms); // => 0.56555819511414
      * ```
      */
     function get_rms(group: string | Hash, window: number): LuaMultiReturn<[number, number]>;
@@ -109,12 +109,12 @@ declare global {
      *
      * @returns `true` if music is playing, otherwise `false`.
      * @example
-     * ```lua
-     * If music is playing, mute "master":
-     * if sound.is_music_playing() then
-     *     -- mute "master"
-     *     sound.set_group_gain("master", 0)
-     * end
+     * ```ts
+     * // If music is playing, mute "master":
+     * if (sound.is_music_playing()) {
+     *   // mute "master"
+     *   sound.set_group_gain("master", 0);
+     * }
      * ```
      */
     function is_music_playing(): boolean;
@@ -126,11 +126,11 @@ declare global {
      *
      * @returns `true` if there is an active phone call, `false` otherwise.
      * @example
-     * ```lua
-     * Test if a phone call is on-going:
-     * if sound.is_phone_call_active() then
-     *     -- do something sensible.
-     * end
+     * ```ts
+     * // Test if a phone call is on-going:
+     * if (sound.is_phone_call_active()) {
+     *   // do something sensible.
+     * }
      * ```
      */
     function is_phone_call_active(): boolean;
@@ -140,9 +140,10 @@ declare global {
      * @param url - the sound that should pause
      * @param pause - true if the sound should pause
      * @example
-     * ```lua
-     * Assuming the script belongs to an instance with a sound-component with id "sound", this will make the component pause all playing voices:
-     * sound.pause("#sound", true)
+     * ```ts
+     * // Assuming the script belongs to an instance with a sound-component with id
+     * // "sound", this will make the component pause all playing voices:
+     * sound.pause("#sound", true);
      * ```
      */
     function pause(url: string | Hash | Url, pause: boolean): void;
@@ -176,21 +177,24 @@ declare global {
      * url The invoker of the callback: the sound component.
      * @returns The identifier for the sound voice
      * @example
-     * ```lua
-     * Assuming the script belongs to an instance with a sound-component with id "sound", this will make the component play its sound after 1 second:
-     * sound.play("#sound", { delay = 1, gain = 0.9, pan = -1.0 } )
+     * ```ts
+     * // Assuming the script belongs to an instance with a sound-component with id
+     * // "sound", this will make the component play its sound after 1 second:
+     * sound.play("#sound", { delay: 1, gain: 0.9, pan: -1.0 });
      *
-     * Using the callback argument, you can chain several sounds together:
-     * local function sound_done(self, message_id, message, sender)
-     *   -- play 'boom' sound fx when the countdown has completed
-     *   if message_id == hash("sound_done") and message.play_id == self.countdown_id then
-     *     sound.play("#boom", nil, sound_done)
-     *   end
-     * end
+     * // Using the callback argument, you can chain several sounds together:
+     * function sound_done(self, message_id, message, sender) {
+     *   // play 'boom' sound fx when the countdown has completed
+     *   if (message_id === hash("sound_done") && message.play_id === self.countdown_id) {
+     *     sound.play("#boom", undefined, sound_done);
+     *   }
+     * }
      *
-     * function init(self)
-     *   self.countdown_id = sound.play("#countdown", nil, sound_done)
-     * end
+     * export default defineScript({
+     *   init(self) {
+     *     self.countdown_id = sound.play("#countdown", undefined, sound_done);
+     *   },
+     * });
      * ```
      */
     function play(url: string | Hash | Url, play_properties?: { delay?: number; gain?: number; pan?: number; speed?: number; start_time?: number; start_frame?: number }, complete_function?: (self: unknown, message_id: unknown, message: unknown, sender: unknown) => void): number;
@@ -200,9 +204,10 @@ declare global {
      * @param url - the sound to set the gain of
      * @param gain - sound gain between 0 and 1 [-60dB .. 0dB]. The final gain of the sound will be a combination of this gain, the group gain and the master gain.
      * @example
-     * ```lua
-     * Assuming the script belongs to an instance with a sound-component with id "sound", this will set the gain to 0.9
-     * sound.set_gain("#sound", 0.9)
+     * ```ts
+     * // Assuming the script belongs to an instance with a sound-component with id
+     * // "sound", this will set the gain to 0.9
+     * sound.set_gain("#sound", 0.9);
      * ```
      */
     function set_gain(url: string | Hash | Url, gain?: number): void;
@@ -212,9 +217,9 @@ declare global {
      * @param group - group name
      * @param gain - gain in range [0..1] mapped to [0 .. -60dB]
      * @example
-     * ```lua
-     * Set mixer group gain on the "soundfx" group to 50% (-30dB):
-     * sound.set_group_gain("soundfx", 0.5)
+     * ```ts
+     * // Set mixer group gain on the "soundfx" group to 50% (-30dB):
+     * sound.set_group_gain("soundfx", 0.5);
      * ```
      */
     function set_group_gain(group: string | Hash, gain: number): void;
@@ -225,9 +230,10 @@ declare global {
      * @param url - the sound to set the panning value to
      * @param pan - sound panning between -1.0 and 1.0
      * @example
-     * ```lua
-     * Assuming the script belongs to an instance with a sound-component with id "sound", this will set the gain to 0.5
-     * sound.set_pan("#sound", 0.5) -- pan to the right
+     * ```ts
+     * // Assuming the script belongs to an instance with a sound-component with id
+     * // "sound", this will set the gain to 0.5
+     * sound.set_pan("#sound", 0.5); // pan to the right
      * ```
      */
     function set_pan(url: string | Hash | Url, pan?: number): void;
@@ -239,11 +245,12 @@ declare global {
      * `play_id`
      * number the sequential play identifier that should be stopped (was given by the sound.play() function)
      * @example
-     * ```lua
-     * Assuming the script belongs to an instance with a sound-component with id "sound", this will make the component stop all playing voices:
-     * sound.stop("#sound")
-     * local id = sound.play("#sound")
-     * sound.stop("#sound", {play_id = id})
+     * ```ts
+     * // Assuming the script belongs to an instance with a sound-component with id
+     * // "sound", this will make the component stop all playing voices:
+     * sound.stop("#sound");
+     * const id = sound.play("#sound");
+     * sound.stop("#sound", { play_id: id });
      * ```
      */
     function stop(url: string | Hash | Url, stop_properties?: { play_id?: number }): void;

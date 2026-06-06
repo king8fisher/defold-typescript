@@ -486,40 +486,43 @@ declare global {
      * - `gui.PLAYBACK_LOOP_BACKWARD`
      * - `gui.PLAYBACK_LOOP_PINGPONG`
      * @example
-     * ```lua
-     * How to start a simple color animation, where the node fades in to white during 0.5 seconds:
-     * gui.set_color(node, vmath.vector4(0, 0, 0, 0)) -- node is fully transparent
-     * gui.animate(node, gui.PROP_COLOR, vmath.vector4(1, 1, 1, 1), gui.EASING_INOUTQUAD, 0.5) -- start animation
+     * ```ts
+     * // How to start a simple color animation, where the node fades in to white during 0.5 seconds:
+     * gui.set_color(node, vmath.vector4(0, 0, 0, 0)); // node is fully transparent
+     * gui.animate(node, gui.PROP_COLOR, vmath.vector4(1, 1, 1, 1), gui.EASING_INOUTQUAD, 0.5); // start animation
      *
-     * How to start a sequenced animation where the node fades in to white during 0.5 seconds, stays visible for 2 seconds and then fades out:
-     * local function on_animation_done(self, node)
-     *     -- fade out node, but wait 2 seconds before the animation starts
-     *     gui.animate(node, gui.PROP_COLOR, vmath.vector4(0, 0, 0, 0), gui.EASING_OUTQUAD, 0.5, 2.0)
-     * end
+     * // How to start a sequenced animation where the node fades in to white during 0.5
+     * // seconds, stays visible for 2 seconds and then fades out:
+     * function on_animation_done(self, node) {
+     *   // fade out node, but wait 2 seconds before the animation starts
+     *   gui.animate(node, gui.PROP_COLOR, vmath.vector4(0, 0, 0, 0), gui.EASING_OUTQUAD, 0.5, 2.0);
+     * }
      *
-     * function init(self)
-     *     -- fetch the node we want to animate
-     *     local my_node = gui.get_node("my_node")
-     *     -- node is initially set to fully transparent
-     *     gui.set_color(my_node, vmath.vector4(0, 0, 0, 0))
-     *     -- animate the node immediately and call on_animation_done when the animation has completed
-     *     gui.animate(my_node, gui.PROP_COLOR, vmath.vector4(1, 1, 1, 1), gui.EASING_INOUTQUAD, 0.5, 0.0, on_animation_done)
-     * end
+     * export default defineScript({
+     *   init(self) {
+     *     // fetch the node we want to animate
+     *     const my_node = gui.get_node("my_node");
+     *     // node is initially set to fully transparent
+     *     gui.set_color(my_node, vmath.vector4(0, 0, 0, 0));
+     *     // animate the node immediately and call on_animation_done when the animation has completed
+     *     gui.animate(my_node, gui.PROP_COLOR, vmath.vector4(1, 1, 1, 1), gui.EASING_INOUTQUAD, 0.5, 0.0, on_animation_done);
+     *   },
+     * });
      *
-     * How to animate a node's y position using a crazy custom easing curve:
-     * function init(self)
-     *     local values = { 0, 0, 0, 0, 0, 0, 0, 0,
-     *                      1, 1, 1, 1, 1, 1, 1, 1,
-     *                      0, 0, 0, 0, 0, 0, 0, 0,
-     *                      1, 1, 1, 1, 1, 1, 1, 1,
-     *                      0, 0, 0, 0, 0, 0, 0, 0,
-     *                      1, 1, 1, 1, 1, 1, 1, 1,
-     *                      0, 0, 0, 0, 0, 0, 0, 0,
-     *                      1, 1, 1, 1, 1, 1, 1, 1 }
-     *     local vec = vmath.vector(values)
-     *     local node = gui.get_node("box")
-     *     gui.animate(node, "position.y", 100, vec, 4.0, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
-     * end
+     * // How to animate a node's y position using a crazy custom easing curve:
+     * export default defineScript({
+     *   init(self) {
+     *     const values = [
+     *       0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+     *       0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+     *       0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+     *       0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+     *     ];
+     *     const vec = vmath.vector(values);
+     *     const node = gui.get_node("box");
+     *     gui.animate(node, "position.y", 100, vec, 4.0, 0, undefined, gui.PLAYBACK_LOOP_PINGPONG);
+     *   },
+     * });
      * ```
      */
     function animate(node: Opaque<"node">, property: string | Opaque<"constant">, to: number | Vector3 | Vector4 | Quaternion, easing: Opaque<"constant"> | Vector, duration: number, delay?: number, complete_function?: (self: unknown, node: unknown) => void, playback?: Opaque<"constant">): void;
@@ -542,25 +545,24 @@ declare global {
      * - `"tracking"` (text)
      * - `"slice9"` (slice9)
      * @example
-     * ```lua
-     * Start an animation of the position property of a node, then cancel parts of
-     * the animation:
-     * local node = gui.get_node("my_node")
-     * -- animate to new position
-     * local pos = vmath.vector3(100, 100, 0)
-     * gui.animate(node, "position", pos, go.EASING_LINEAR, 2)
-     * ...
-     * -- cancel animation of the x component.
-     * gui.cancel_animations(node, "position.x")
+     * ```ts
+     * // Start an animation of the position property of a node, then cancel parts of
+     * // the animation:
+     * const node = gui.get_node("my_node");
+     * // animate to new position
+     * const pos = vmath.vector3(100, 100, 0);
+     * gui.animate(node, "position", pos, go.EASING_LINEAR, 2);
+     * // ...
+     * // cancel animation of the x component.
+     * gui.cancel_animations(node, "position.x");
      *
-     * Cancels all property animations on a node in a single call:
-     * local node = gui.get_node("my_node")
-     * -- animate to new position and scale
-     * gui.animate(node, "position", vmath.vector3(100, 100, 0), go.EASING_LINEAR, 5)
-     * gui.animate(node, "scale", vmath.vector3(0.5), go.EASING_LINEAR, 5)
-     * ...
-     * -- cancel positioning and scaling at once
-     * gui.cancel_animations(node)
+     * // Cancels all property animations on a node in a single call:
+     * // animate to new position and scale
+     * gui.animate(node, "position", vmath.vector3(100, 100, 0), go.EASING_LINEAR, 5);
+     * gui.animate(node, "scale", vmath.vector3(0.5), go.EASING_LINEAR, 5);
+     * // ...
+     * // cancel positioning and scaling at once
+     * gui.cancel_animations(node);
      * ```
      */
     function cancel_animations(node: Opaque<"node">, property?: string | Opaque<"constant">): void;
@@ -569,9 +571,9 @@ declare global {
      *
      * @param node - node cancel flipbook animation for
      * @example
-     * ```lua
-     * local node = gui.get_node("anim_node")
-     * gui.cancel_flipbook(node)
+     * ```ts
+     * const node = gui.get_node("anim_node");
+     * gui.cancel_flipbook(node);
      * ```
      */
     function cancel_flipbook(node: Opaque<"node">): void;
@@ -600,10 +602,10 @@ declare global {
      *
      * @param node - node to delete
      * @example
-     * ```lua
-     * Delete a particular node and any child nodes it might have:
-     * local node = gui.get_node("my_node")
-     * gui.delete_node(node)
+     * ```ts
+     * // Delete a particular node and any child nodes it might have:
+     * const node = gui.get_node("my_node");
+     * gui.delete_node(node);
      * ```
      */
     function delete_node(node: Opaque<"node">): void;
@@ -612,17 +614,19 @@ declare global {
      *
      * @param texture - texture id
      * @example
-     * ```lua
-     * function init(self)
-     *      -- Create a texture.
-     *      if gui.new_texture("temp_tx", 10, 10, "rgb", string.rep('\0', 10 * 10 * 3)) then
-     *          -- Do something with the texture.
-     *          ...
+     * ```ts
+     * export default defineScript({
+     *   init(self) {
+     *     // Create a texture.
+     *     if (gui.new_texture("temp_tx", 10, 10, "rgb", "\0".repeat(10 * 10 * 3))) {
+     *       // Do something with the texture.
+     *       // ...
      *
-     *          -- Delete the texture
-     *          gui.delete_texture("temp_tx")
-     *      end
-     * end
+     *       // Delete the texture
+     *       gui.delete_texture("temp_tx");
+     *     }
+     *   },
+     * });
      * ```
      */
     function delete_texture(texture: string | Hash): void;
@@ -669,10 +673,10 @@ declare global {
      * @param options - optional options table (only applicable for material constants)
      * - `index` number index into array property (1 based)
      * @example
-     * ```lua
-     * Get properties on existing nodes:
-     * local node = gui.get_node("my_box_node")
-     * local node_position = gui.get(node, "position")
+     * ```ts
+     * // Get properties on existing nodes:
+     * const node = gui.get_node("my_box_node");
+     * const node_position = gui.get(node, "position");
      * ```
      */
     function get(node: Opaque<"node">, property: string | Hash | Opaque<"constant">, options?: { index?: number }): void;
@@ -798,14 +802,16 @@ declare global {
      * @param font_name - font of which to get the path hash
      * @returns path hash to resource
      * @example
-     * ```lua
-     * Get the text metrics for a text
-     * function init(self)
-     *   local node = gui.get_node("name")
-     *   local font_name = gui.get_font(node)
-     *   local font = gui.get_font_resource(font_name)
-     *   local metrics = resource.get_text_metrics(font, "The quick brown fox\n jumps over the lazy dog")
-     * end
+     * ```ts
+     * // Get the text metrics for a text
+     * export default defineScript({
+     *   init(self) {
+     *     const node = gui.get_node("name");
+     *     const font_name = gui.get_font(node);
+     *     const font = gui.get_font_resource(font_name);
+     *     const metrics = resource.get_text_metrics(font, "The quick brown fox\n jumps over the lazy dog");
+     *   },
+     * });
      * ```
      */
     function get_font_resource(font_name: Hash | string): Hash;
@@ -821,12 +827,12 @@ declare global {
      * @param node - the node to retrieve the id from
      * @returns the id of the node
      * @example
-     * ```lua
-     * Gets the id of a node:
-     * local node = gui.get_node("my_node")
+     * ```ts
+     * // Gets the id of a node:
+     * const node = gui.get_node("my_node");
      *
-     * local id = gui.get_id(node)
-     * print(id) --> hash: [my_node]
+     * const id = gui.get_id(node);
+     * print(id); // => hash: [my_node]
      * ```
      */
     function get_id(node: Opaque<"node">): Hash;
@@ -838,16 +844,16 @@ declare global {
      * @param node - the node to retrieve the id from
      * @returns the index of the node
      * @example
-     * ```lua
-     * Compare the index order of two sibling nodes:
-     * local node1 = gui.get_node("my_node_1")
-     * local node2 = gui.get_node("my_node_2")
+     * ```ts
+     * // Compare the index order of two sibling nodes:
+     * const node1 = gui.get_node("my_node_1");
+     * const node2 = gui.get_node("my_node_2");
      *
-     * if gui.get_index(node1) < gui.get_index(node2) then
-     *     -- node1 is drawn below node2
-     * else
-     *     -- node2 is drawn below node1
-     * end
+     * if (gui.get_index(node1) < gui.get_index(node2)) {
+     *   // node1 is drawn below node2
+     * } else {
+     *   // node2 is drawn below node1
+     * }
      * ```
      */
     function get_index(node: Opaque<"node">): number;
@@ -909,12 +915,12 @@ declare global {
      * @param node - node to get the material for
      * @returns material id
      * @example
-     * ```lua
-     * Getting the material for a node, and assign it to another node:
-     * local node1 = gui.get_node("my_node")
-     * local node2 = gui.get_node("other_node")
-     * local node1_material = gui.get_material(node1)
-     * gui.set_material(node2, node1_material)
+     * ```ts
+     * // Getting the material for a node, and assign it to another node:
+     * const node1 = gui.get_node("my_node");
+     * const node2 = gui.get_node("other_node");
+     * const node1_material = gui.get_material(node1);
+     * gui.set_material(node2, node1_material);
      * ```
      */
     function get_material(node: Opaque<"node">): Hash;
@@ -924,11 +930,11 @@ declare global {
      * @param id - id of the node to retrieve
      * @returns a new node instance
      * @example
-     * ```lua
-     * Gets a node by id and change its color:
-     * local node = gui.get_node("my_node")
-     * local red = vmath.vector4(1.0, 0.0, 0.0, 1.0)
-     * gui.set_color(node, red)
+     * ```ts
+     * // Gets a node by id and change its color:
+     * const node = gui.get_node("my_node");
+     * const red = vmath.vector4(1.0, 0.0, 0.0, 1.0);
+     * gui.set_color(node, red);
      * ```
      */
     function get_node(id: string | Hash): Opaque<"node">;
@@ -1216,40 +1222,41 @@ declare global {
      * @param buffer - texture data
      * @param flip - flip texture vertically
      * @example
-     * ```lua
-     * How to create a texture and apply it to a new box node:
-     * function init(self)
-     *      local w = 200
-     *      local h = 300
+     * ```ts
+     * // How to create a texture and apply it to a new box node:
+     * export default defineScript({
+     *   init(self) {
+     *     const w = 200;
+     *     const h = 300;
      *
-     *      -- A nice orange. String with the RGB values.
-     *      local orange = string.char(0xff) .. string.char(0x80) .. string.char(0x10)
+     *     // A nice orange. String with the RGB values.
+     *     const orange = String.fromCharCode(0xff, 0x80, 0x10);
      *
-     *      -- Create the texture. Repeat the color string for each pixel.
-     *      local ok, reason = gui.new_texture("orange_tx", w, h, "rgb", string.rep(orange, w * h))
-     *      if ok then
-     *          -- Create a box node and apply the texture to it.
-     *          local n = gui.new_box_node(vmath.vector3(200, 200, 0), vmath.vector3(w, h, 0))
-     *          gui.set_texture(n, "orange_tx")
-     *      else
-     *          -- Could not create texture for some reason...
-     *          if reason == gui.RESULT_TEXTURE_ALREADY_EXISTS then
-     *              ...
-     *          else
-     *              ...
-     *          end
-     *      end
-     * end
-     * ```How to create a texture using .astc format
+     *     // Create the texture. Repeat the color string for each pixel.
+     *     const [ok, reason] = gui.new_texture("orange_tx", w, h, "rgb", orange.repeat(w * h));
+     *     if (ok) {
+     *       // Create a box node and apply the texture to it.
+     *       const n = gui.new_box_node(vmath.vector3(200, 200, 0), vmath.vector3(w, h, 0));
+     *       gui.set_texture(n, "orange_tx");
+     *     } else {
+     *       // Could not create texture for some reason...
+     *       if (reason === gui.RESULT_TEXTURE_ALREADY_EXISTS) {
+     *         // ...
+     *       } else {
+     *         // ...
+     *       }
+     *     }
+     *   },
+     * });
      *
-     * ```lua
-     * local path = "/assets/images/logo_4x4.astc"
-     * local buffer = sys.load_resource(path)
-     * local n = gui.new_box_node(pos, vmath.vector3(size, size, 0))
-     * -- size is read from the .astc buffer
-     * -- flip is not supported
-     * gui.new_texture(path, 0, 0, "astc", buffer, false)
-     * gui.set_texture(n, path)
+     * // How to create a texture using .astc format
+     * const path = "/assets/images/logo_4x4.astc";
+     * const buffer = sys.load_resource(path);
+     * const n = gui.new_box_node(pos, vmath.vector3(size, size, 0));
+     * // size is read from the .astc buffer
+     * // flip is not supported
+     * gui.new_texture(path, 0, 0, "astc", buffer, false);
+     * gui.set_texture(n, path);
      * ```
      */
     function new_texture(texture_id: string | Hash, width: number, height: number, type: string | Opaque<"constant">, buffer: string, flip: boolean): LuaMultiReturn<[boolean, number]>;
@@ -1420,24 +1427,26 @@ declare global {
      * `playback_rate`
      * number The rate with which the animation will be played. Must be positive
      * @example
-     * ```lua
-     * Set the texture of a node to a flipbook animation from an atlas:
-     * local function anim_callback(self, node)
-     *     -- Take action after animation has played.
-     * end
+     * ```ts
+     * // Set the texture of a node to a flipbook animation from an atlas:
+     * function anim_callback(self, node) {
+     *   // Take action after animation has played.
+     * }
      *
-     * function init(self)
-     *     -- Create a new node and set the texture to a flipbook animation
-     *     local node = gui.get_node("button_node")
-     *     gui.set_texture(node, "gui_sprites")
-     *     gui.play_flipbook(node, "animated_button")
-     * end
+     * export default defineScript({
+     *   init(self) {
+     *     // Create a new node and set the texture to a flipbook animation
+     *     const node = gui.get_node("button_node");
+     *     gui.set_texture(node, "gui_sprites");
+     *     gui.play_flipbook(node, "animated_button");
+     *   },
+     * });
      *
-     * Set the texture of a node to an image from an atlas:
-     * -- Create a new node and set the texture to a "button.png" from atlas
-     * local node = gui.get_node("button_node")
-     * gui.set_texture(node, "gui_sprites")
-     * gui.play_flipbook(node, "button")
+     * // Set the texture of a node to an image from an atlas:
+     * // Create a new node and set the texture to a "button.png" from atlas
+     * const node = gui.get_node("button_node");
+     * gui.set_texture(node, "gui_sprites");
+     * gui.play_flipbook(node, "button");
      * ```
      */
     function play_flipbook(node: Opaque<"node">, animation: string | Hash, complete_function?: (self: unknown, node: unknown) => void, play_properties?: { offset?: number; playback_rate?: number }): void;
@@ -1459,19 +1468,21 @@ declare global {
      * - `particlefx.EMITTER_STATE_SPAWNING`
      * - `particlefx.EMITTER_STATE_POSTSPAWN`
      * @example
-     * ```lua
-     * How to play a particle fx when a gui node is created.
-     * The callback receives the gui node, the hash of the id
-     * of the emitter, and the new state of the emitter as particlefx.EMITTER_STATE_.
-     * local function emitter_state_change(self, node, emitter, state)
-     *   if emitter == hash("exhaust") and state == particlefx.EMITTER_STATE_POSTSPAWN then
-     *     -- exhaust is done spawning particles...
-     *   end
-     * end
+     * ```ts
+     * // How to play a particle fx when a gui node is created.
+     * // The callback receives the gui node, the hash of the id
+     * // of the emitter, and the new state of the emitter as particlefx.EMITTER_STATE_.
+     * function emitter_state_change(self, node, emitter, state) {
+     *   if (emitter === hash("exhaust") && state === particlefx.EMITTER_STATE_POSTSPAWN) {
+     *     // exhaust is done spawning particles...
+     *   }
+     * }
      *
-     * function init(self)
-     *     gui.play_particlefx(gui.get_node("particlefx"), emitter_state_change)
-     * end
+     * export default defineScript({
+     *   init(self) {
+     *     gui.play_particlefx(gui.get_node("particlefx"), emitter_state_change);
+     *   },
+     * });
      * ```
      */
     function play_particlefx(node: Opaque<"node">, emitter_state_function?: (self: unknown, node: unknown, emitter: unknown, state: unknown) => void): void;
@@ -1484,10 +1495,10 @@ declare global {
      *
      * @param node - node to reset the material for
      * @example
-     * ```lua
-     * Resetting the material for a node:
-     * local node = gui.get_node("my_node")
-     * gui.reset_material(node)
+     * ```ts
+     * // Resetting the material for a node:
+     * const node = gui.get_node("my_node");
+     * gui.reset_material(node);
      * ```
      */
     function reset_material(node: Opaque<"node">): void;
@@ -1541,49 +1552,49 @@ declare global {
      * - `index` number index into array property (1 based)
      * - `key` hash name of internal property
      * @example
-     * ```lua
-     * Updates the position property on an existing node:
-     * local node = gui.get_node("my_box_node")
-     * local node_position = gui.get(node, "position")
-     * gui.set(node, "position.x", node_position.x + 128)
+     * ```ts
+     * // Updates the position property on an existing node:
+     * const node = gui.get_node("my_box_node");
+     * const node_position = gui.get(node, "position");
+     * gui.set(node, "position.x", node_position.x + 128);
      *
-     * Updates the rotation property on an existing node:
-     * local node = gui.get_node("my_box_node")
-     * gui.set(node, "rotation", vmath.quat_rotation_z(math.rad(45)))
-     * -- this is equivalent to:
-     * gui.set(node, "euler.z", 45)
-     * -- or using the entire vector:
-     * gui.set(node, "euler", vmath.vector3(0,0,45))
-     * -- or using the set_rotation
-     * gui.set_rotation(node, vmath.vector3(0,0,45))
+     * // Updates the rotation property on an existing node:
+     * gui.set(node, "rotation", vmath.quat_rotation_z(math.rad(45)));
+     * // this is equivalent to:
+     * gui.set(node, "euler.z", 45);
+     * // or using the entire vector:
+     * gui.set(node, "euler", vmath.vector3(0, 0, 45));
+     * // or using the set_rotation
+     * gui.set_rotation(node, vmath.vector3(0, 0, 45));
      *
-     * Sets various material constants for a node:
-     * local node = gui.get_node("my_box_node")
-     * gui.set(node, "tint", vmath.vector4(1,0,0,1))
-     * -- matrix4 is also supported
-     * gui.set(node, "light_matrix", vmath.matrix4())
-     * -- update a constant in an array at position 4. the array is specified in the shader as:
-     * -- uniform vec4 tint_array[4]; // lua is 1 based, shader is 0 based
-     * gui.set(node, "tint_array", vmath.vector4(1,0,0,1), { index = 4 })
-     * -- update a matrix constant in an array at position 4. the array is specified in the shader as:
-     * -- uniform mat4 light_matrix_array[4];
-     * gui.set(node, "light_matrix_array", vmath.matrix4(), { index = 4 })
-     * -- update a sub-element in a constant
-     * gui.set(node, "tint.x", 1)
-     * -- update a sub-element in an array constant at position 4
-     * gui.set(node, "tint_array.x", 1, {index = 4})
+     * // Sets various material constants for a node:
+     * gui.set(node, "tint", vmath.vector4(1, 0, 0, 1));
+     * // matrix4 is also supported
+     * gui.set(node, "light_matrix", vmath.matrix4());
+     * // update a constant in an array at position 4. the array is specified in the shader as:
+     * // uniform vec4 tint_array[4]; // lua is 1 based, shader is 0 based
+     * gui.set(node, "tint_array", vmath.vector4(1, 0, 0, 1), { index: 4 });
+     * // update a matrix constant in an array at position 4. the array is specified in the shader as:
+     * // uniform mat4 light_matrix_array[4];
+     * gui.set(node, "light_matrix_array", vmath.matrix4(), { index: 4 });
+     * // update a sub-element in a constant
+     * gui.set(node, "tint.x", 1);
+     * // update a sub-element in an array constant at position 4
+     * gui.set(node, "tint_array.x", 1, { index: 4 });
      *
-     * Set a named property
-     * function on_message(self, message_id, message, sender)
-     *    if message_id == hash("set_font") then
-     *        gui.set(msg.url(), "fonts", message.font, {key = "my_font_name"})
-     *        gui.set_font(gui.get_node("text"), "my_font_name")
-     *    elseif message_id == hash("set_texture") then
-     *        gui.set(msg.url(), "textures", message.texture, {key = "my_texture"})
-     *        gui.set_texture(gui.get_node("box"), "my_texture")
-     *        gui.play_flipbook(gui.get_node("box"), "logo_256")
-     *    end
-     * end
+     * // Set a named property
+     * export default defineScript({
+     *   on_message(self, message_id, message) {
+     *     if (message_id === hash("set_font")) {
+     *       gui.set(msg.url(), "fonts", message.font, { key: "my_font_name" });
+     *       gui.set_font(gui.get_node("text"), "my_font_name");
+     *     } else if (message_id === hash("set_texture")) {
+     *       gui.set(msg.url(), "textures", message.texture, { key: "my_texture" });
+     *       gui.set_texture(gui.get_node("box"), "my_texture");
+     *       gui.play_flipbook(gui.get_node("box"), "logo_256");
+     *     }
+     *   },
+     * });
      * ```
      */
     function set(node: Opaque<"node"> | Url, property: string | Hash | Opaque<"constant">, value: number | Vector4 | Vector3 | Quaternion, options?: { index?: number; key?: Hash }): void;
@@ -1716,12 +1727,12 @@ declare global {
      * @param node - node to set the id for
      * @param id - id to set
      * @example
-     * ```lua
-     * Create a new node and set its id:
-     * local pos = vmath.vector3(100, 100, 0)
-     * local size = vmath.vector3(100, 100, 0)
-     * local node = gui.new_box_node(pos, size)
-     * gui.set_id(node, "my_new_node")
+     * ```ts
+     * // Create a new node and set its id:
+     * const pos = vmath.vector3(100, 100, 0);
+     * const size = vmath.vector3(100, 100, 0);
+     * const node = gui.new_box_node(pos, size);
+     * gui.set_id(node, "my_new_node");
      * ```
      */
     function set_id(node: Opaque<"node">, id: string | Hash): void;
@@ -1780,10 +1791,10 @@ declare global {
      * @param node - node to set material for
      * @param material - material id
      * @example
-     * ```lua
-     * Assign an existing material to a node:
-     * local node = gui.get_node("my_node")
-     * gui.set_material(node, "my_material")
+     * ```ts
+     * // Assign an existing material to a node:
+     * const node = gui.get_node("my_node");
+     * gui.set_material(node, "my_material");
      * ```
      */
     function set_material(node: Opaque<"node">, material: string | Hash): void;
@@ -1946,24 +1957,22 @@ declare global {
      * @param node - node to set texture for
      * @param texture - texture id
      * @example
-     * ```lua
-     * To set a texture (or animation) from an atlas:
-     * local node = gui.get_node("box_node")
-     * gui.set_texture(node, "my_atlas")
-     * gui.play_flipbook(node, "image")
+     * ```ts
+     * // To set a texture (or animation) from an atlas:
+     * const node = gui.get_node("box_node");
+     * gui.set_texture(node, "my_atlas");
+     * gui.play_flipbook(node, "image");
      *
-     * Set a dynamically created texture to a node. Note that there is only
-     * one texture image in this case so gui.set_texture() is
-     * sufficient.
-     * local w = 200
-     * local h = 300
-     * -- A nice orange. String with the RGB values.
-     * local orange = string.char(0xff) .. string.char(0x80) .. string.char(0x10)
-     * -- Create the texture. Repeat the color string for each pixel.
-     * if gui.new_texture("orange_tx", w, h, "rgb", string.rep(orange, w * h)) then
-     *     local node = gui.get_node("box_node")
-     *     gui.set_texture(node, "orange_tx")
-     * end
+     * // Set a dynamically created texture to a node. Note that there is only
+     * // one texture image in this case so gui.set_texture() is sufficient.
+     * const w = 200;
+     * const h = 300;
+     * // A nice orange. String with the RGB values.
+     * const orange = String.fromCharCode(0xff, 0x80, 0x10);
+     * // Create the texture. Repeat the color string for each pixel.
+     * if (gui.new_texture("orange_tx", w, h, "rgb", orange.repeat(w * h))) {
+     *   gui.set_texture(node, "orange_tx");
+     * }
      * ```
      */
     function set_texture(node: Opaque<"node">, texture: string | Hash): void;
@@ -1982,30 +1991,32 @@ declare global {
      * @param flip - flip texture vertically
      * @returns setting the data was successful
      * @example
-     * ```lua
-     * function init(self)
-     *      local w = 200
-     *      local h = 300
+     * ```ts
+     * export default defineScript({
+     *   init(self) {
+     *     const w = 200;
+     *     const h = 300;
      *
-     *      -- Create a dynamic texture, all white.
-     *      if gui.new_texture("dynamic_tx", w, h, "rgb", string.rep(string.char(0xff), w * h * 3)) then
-     *          -- Create a box node and apply the texture to it.
-     *          local n = gui.new_box_node(vmath.vector3(200, 200, 0), vmath.vector3(w, h, 0))
-     *          gui.set_texture(n, "dynamic_tx")
+     *     // Create a dynamic texture, all white.
+     *     if (gui.new_texture("dynamic_tx", w, h, "rgb", String.fromCharCode(0xff).repeat(w * h * 3))) {
+     *       // Create a box node and apply the texture to it.
+     *       const n = gui.new_box_node(vmath.vector3(200, 200, 0), vmath.vector3(w, h, 0));
+     *       gui.set_texture(n, "dynamic_tx");
      *
-     *          ...
+     *       // ...
      *
-     *          -- Change the data in the texture to a nice orange.
-     *          local orange = string.char(0xff) .. string.char(0x80) .. string.char(0x10)
-     *          if gui.set_texture_data("dynamic_tx", w, h, "rgb", string.rep(orange, w * h)) then
-     *              -- Go on and to more stuff
-     *              ...
-     *          end
-     *      else
-     *          -- Something went wrong
-     *          ...
-     *      end
-     * end
+     *       // Change the data in the texture to a nice orange.
+     *       const orange = String.fromCharCode(0xff, 0x80, 0x10);
+     *       if (gui.set_texture_data("dynamic_tx", w, h, "rgb", orange.repeat(w * h))) {
+     *         // Go on and to more stuff
+     *         // ...
+     *       }
+     *     } else {
+     *       // Something went wrong
+     *       // ...
+     *     }
+     *   },
+     * });
      * ```
      */
     function set_texture_data(texture: string | Hash, width: number, height: number, type: string | Opaque<"constant">, buffer: string, flip: boolean): boolean;

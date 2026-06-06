@@ -40,19 +40,21 @@ declare global {
      * - `particlefx.EMITTER_STATE_SPAWNING`
      * - `particlefx.EMITTER_STATE_POSTSPAWN`
      * @example
-     * ```lua
-     * How to play a particle fx when a game object is created.
-     * The callback receives the hash of the path to the particlefx, the hash of the id
-     * of the emitter, and the new state of the emitter as particlefx.EMITTER_STATE_.
-     * local function emitter_state_change(self, id, emitter, state)
-     *   if emitter == hash("exhaust") and state == particlefx.EMITTER_STATE_POSTSPAWN then
-     *     -- exhaust is done spawning particles...
-     *   end
-     * end
+     * ```ts
+     * // How to play a particle fx when a game object is created.
+     * // The callback receives the hash of the path to the particlefx, the hash of the id
+     * // of the emitter, and the new state of the emitter as particlefx.EMITTER_STATE_.
+     * function emitter_state_change(self, id, emitter, state) {
+     *   if (emitter === hash("exhaust") && state === particlefx.EMITTER_STATE_POSTSPAWN) {
+     *     // exhaust is done spawning particles...
+     *   }
+     * }
      *
-     * function init(self)
-     *     particlefx.play("#particlefx", emitter_state_change)
-     * end
+     * export default defineScript({
+     *   init(self) {
+     *     particlefx.play("#particlefx", emitter_state_change);
+     *   },
+     * });
      * ```
      */
     function play(url: string | Hash | Url, emitter_state_function?: (self: unknown, id: unknown, emitter: unknown, state: unknown) => void): void;
@@ -66,14 +68,18 @@ declare global {
      * @param emitter - the id of the emitter
      * @param constant - the name of the constant
      * @example
-     * ```lua
-     * The following examples assumes that the particle FX has id "particlefx", it
-     * contains an emitter with the id "emitter" and that the default-material in builtins is used, which defines the constant "tint".
-     * If you assign a custom material to the sprite, you can reset the constants defined there in the same manner.
-     * How to reset the tinting of particles from an emitter:
-     * function init(self)
-     *     particlefx.reset_constant("#particlefx", "emitter", "tint")
-     * end
+     * ```ts
+     * // The following examples assume that the particle FX has id "particlefx", it
+     * // contains an emitter with the id "emitter" and that the default-material in
+     * // builtins is used, which defines the constant "tint".
+     * // If you assign a custom material to the sprite, you can reset the constants
+     * // defined there in the same manner.
+     * // How to reset the tinting of particles from an emitter:
+     * export default defineScript({
+     *   init(self) {
+     *     particlefx.reset_constant("#particlefx", "emitter", "tint");
+     *   },
+     * });
      * ```
      */
     function reset_constant(url: string | Hash | Url, emitter: string | Hash, constant: string | Hash): void;
@@ -89,14 +95,18 @@ declare global {
      * @param constant - the name of the constant
      * @param value - the value of the constant
      * @example
-     * ```lua
-     * The following examples assumes that the particle FX has id "particlefx", it
-     * contains an emitter with the id "emitter" and that the default-material in builtins is used, which defines the constant "tint".
-     * If you assign a custom material to the sprite, you can reset the constants defined there in the same manner.
-     * How to tint particles from an emitter red:
-     * function init(self)
-     *     particlefx.set_constant("#particlefx", "emitter", "tint", vmath.vector4(1, 0, 0, 1))
-     * end
+     * ```ts
+     * // The following examples assume that the particle FX has id "particlefx", it
+     * // contains an emitter with the id "emitter" and that the default-material in
+     * // builtins is used, which defines the constant "tint".
+     * // If you assign a custom material to the sprite, you can reset the constants
+     * // defined there in the same manner.
+     * // How to tint particles from an emitter red:
+     * export default defineScript({
+     *   init(self) {
+     *     particlefx.set_constant("#particlefx", "emitter", "tint", vmath.vector4(1, 0, 0, 1));
+     *   },
+     * });
      * ```
      */
     function set_constant(url: string | Hash | Url, emitter: string | Hash, constant: string | Hash, value: Vector4): void;
@@ -109,12 +119,14 @@ declare global {
      * @param options - Options when stopping the particle fx. Supported options:
      * - boolean `clear`: instantly clear spawned particles
      * @example
-     * ```lua
-     * How to stop a particle fx when a game object is deleted and immediately also clear
-     * any spawned particles:
-     * function final(self)
-     *     particlefx.stop("#particlefx", { clear = true })
-     * end
+     * ```ts
+     * // How to stop a particle fx when a game object is deleted and immediately also
+     * // clear any spawned particles:
+     * export default defineScript({
+     *   final(self) {
+     *     particlefx.stop("#particlefx", { clear: true });
+     *   },
+     * });
      * ```
      */
     function stop(url: string | Hash | Url, options?: { clear?: boolean }): void;
