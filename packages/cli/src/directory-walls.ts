@@ -1,7 +1,13 @@
+import { readFileSync } from "node:fs";
+import * as path from "node:path";
+import { detectSourceScriptKind, isTranspilerSource, readBuildConfig } from "./build-output";
+import { scanFilesSync } from "./scan";
 import {
   excludedModulesForKind,
+  isSkipped,
   type ScriptKind,
   selectDirectoryWalls,
+  selectScriptKind,
   selectScriptKindEntrypoint,
 } from "./script-kind";
 
@@ -12,13 +18,51 @@ export interface DirectoryWall {
   readonly typesEntrypoint: string;
 }
 
+function describeWall(dir: string, kind: ScriptKind): DirectoryWall {
+  return {
+    dir,
+    kind,
+    excludedModules: excludedModulesForKind(kind),
+    typesEntrypoint: selectScriptKindEntrypoint(new Set([kind])),
+  };
+}
+
 export function planDirectoryWalls(cwd: string): DirectoryWall[] {
   return [...selectDirectoryWalls(cwd)]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([dir, kind]) => ({
-      dir,
-      kind,
-      excludedModules: excludedModulesForKind(kind),
-      typesEntrypoint: selectScriptKindEntrypoint(new Set([kind])),
-    }));
+    .map(([dir, kind]) => describeWall(dir, kind));
+}
+
+export function groupSourceScriptKindsByDirectory(cwd: string): Map<string, Set<ScriptKind>> {
+  const byDir = new Map<string, Set<ScriptKind>>();
+  const seen = new Set<string>();
+  for (const pattern of readBuildConfig(cwd).include) {
+    for (const match of scanFilesSync(cwd, pattern)) {
+      const rel = match.split(path.sep).join("/");
+      if (seen.has(rel) || !isTranspilerSource(rel) || isSkipped(rel)) {
+        continue;
+      }
+      seen.add(rel);
+      const kind = detectSourceScriptKind(readFileSync(path.join(cwd, match), "utf8"));
+      const dir = path.posix.dirname(rel);
+      let set = byDir.get(dir);
+      if (set === undefined) {
+        set = new Set<ScriptKind>();
+        byDir.set(dir, set);
+      }
+      set.add(kind);
+    }
+  }
+  return byDir;
+}
+
+export function planSourceDirectoryWalls(cwd: string): DirectoryWall[] {
+  const walls: DirectoryWall[] = [];
+  for (const [dir, kinds] of groupSourceScriptKindsByDirectory(cwd)) {
+    const kind = selectScriptKind(kinds);
+    if (kind !== null) {
+      walls.push(describeWall(dir, kind));
+    }
+  }
+  return walls.sort((a, b) => (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0));
 }
