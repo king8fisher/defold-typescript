@@ -7,7 +7,7 @@ Step through your TypeScript with breakpoints set directly in the `.ts` source, 
 Running `bunx @defold-typescript/cli init` sets up the whole debug path:
 
 - `extensions.json` recommends `tomblind.local-lua-debugger-vscode` alongside sumneko Lua and Defold Kit.
-- `launch.json` adds a `lua-local` configuration named **Defold: Debug (TypeScript)** whose `program.command` is `bun`.
+- `launch.json` adds a `lua-local` configuration named **Defold: Debug (TypeScript)** whose `program.command` is `bun`. It also sets `scriptFiles` (`src/**/*.ts.script`) and `scriptRoots` (`.`, `src`). Local Lua Debugger (>=0.3.0) pre-scans `scriptFiles` for the emitted `--# sourceMappingURL=` trailers to resolve `.ts` breakpoints ahead of time — without it, no source-mapped breakpoint binds — and uses `scriptRoots` to resolve the running Defold chunk path and the map's bare `sources` entry back to files on disk.
 - `defold-debug.ts` is a self-contained Bun launcher that downloads and runs a stock `dmengine` (or your native-extension build engine) with its stdio inherited — the pipe Local Lua Debugger attaches over.
 
 The launcher is **Bun, not a shell script**. The upstream `lua-local` template runs a `bash` script and, on Windows, routes it through Git Bash. This toolchain already mandates Bun and targets Windows, so the launcher uses `process.platform` for the OS, `fetch` for the engine download, and `Bun.spawn` for the run — no `bash`, no Git Bash dependency. All `.vscode` debug files merge additively into any config you already have.
@@ -65,6 +65,7 @@ The manual walkthrough below remains the fallback and documents exactly what `se
    if (sys.get_engine_info().is_debug) {
      lldebugger.start();
    }
+
    // defold-typescript:setup-debug END
    ```
 

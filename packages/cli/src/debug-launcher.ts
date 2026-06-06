@@ -7,12 +7,27 @@ export interface EngineTarget {
 }
 
 // `enginePlatform` keys the d.defold.com download path; `buildFolder` keys the
-// native-extension build output. They diverge on macOS (`x86_64-darwin` vs
-// `x86_64-osx`), which is why they are tracked separately.
+// native-extension build output. Current Defold uses the same `-macos` identifier
+// for both, but they are tracked separately so a future divergence stays local.
+// Keyed by `${process.platform}-${process.arch}` because Apple Silicon and Intel
+// resolve to different engine archives (`arm64-macos` vs `x86_64-macos`).
 const PLATFORM_TARGETS: Record<string, EngineTarget> = {
-  darwin: { enginePlatform: "x86_64-darwin", buildFolder: "x86_64-osx", executable: "dmengine" },
-  linux: { enginePlatform: "x86_64-linux", buildFolder: "x86_64-linux", executable: "dmengine" },
-  win32: {
+  "darwin-arm64": {
+    enginePlatform: "arm64-macos",
+    buildFolder: "arm64-macos",
+    executable: "dmengine",
+  },
+  "darwin-x64": {
+    enginePlatform: "x86_64-macos",
+    buildFolder: "x86_64-macos",
+    executable: "dmengine",
+  },
+  "linux-x64": {
+    enginePlatform: "x86_64-linux",
+    buildFolder: "x86_64-linux",
+    executable: "dmengine",
+  },
+  "win32-x64": {
     enginePlatform: "x86_64-win32",
     buildFolder: "x86_64-win32",
     executable: "dmengine.exe",
@@ -24,11 +39,12 @@ const ENGINE_ARCHIVE_BASE = "https://d.defold.com/archive/stable";
 
 export const DEBUG_LAUNCHER_REL = ".vscode/defold-debug.ts";
 
-export function targetPlatform(platform: NodeJS.Platform): EngineTarget {
-  const target = PLATFORM_TARGETS[platform];
+export function targetPlatform(platform: NodeJS.Platform, arch: string): EngineTarget {
+  const key = `${platform}-${arch}`;
+  const target = PLATFORM_TARGETS[key];
   if (!target) {
     throw new Error(
-      `defold-typescript debug: unsupported platform "${platform}"; expected one of ${Object.keys(
+      `defold-typescript debug: unsupported platform "${key}"; expected one of ${Object.keys(
         PLATFORM_TARGETS,
       ).join(", ")}.`,
     );
@@ -69,6 +85,14 @@ export function debugLaunchConfig() {
     internalConsoleOptions: "openOnSessionStart",
     program: { command: "bun" },
     args: [DEBUG_LAUNCHER_REL],
+    // Local Lua Debugger (>=0.3.0) pre-scans `scriptFiles` for the emitted
+    // `--# sourceMappingURL=` trailers so a breakpoint in a `.ts` resolves
+    // ahead of time; without it no source-mapped breakpoint ever binds. Every
+    // build emits `<name>.ts.script` under `src/`. `scriptRoots` lets the
+    // debugger resolve the running Defold chunk path (`/src/...`) and the map's
+    // bare `sources` entry (`player.ts`) back to files on disk.
+    scriptFiles: ["src/**/*.ts.script"],
+    scriptRoots: [".", "src"],
   };
 }
 
@@ -103,9 +127,9 @@ const PLATFORM_TARGETS: Record<string, EngineTarget> = ${targets};
 const ENGINE_INFO_URL = "${ENGINE_INFO_URL}";
 const ENGINE_ARCHIVE_BASE = "${ENGINE_ARCHIVE_BASE}";
 
-const target = PLATFORM_TARGETS[process.platform];
+const target = PLATFORM_TARGETS[\`\${process.platform}-\${process.arch}\`];
 if (!target) {
-  console.error(\`Unsupported platform: \${process.platform}\`);
+  console.error(\`Unsupported platform: \${process.platform}-\${process.arch}\`);
   process.exit(1);
 }
 

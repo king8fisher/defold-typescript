@@ -1,3 +1,12 @@
+// defold-typescript:setup-debug BEGIN — managed block, do not edit
+import * as lldebugger from "lldebugger.debug";
+
+if (sys.get_engine_info().is_debug) {
+  lldebugger.start();
+}
+
+// defold-typescript:setup-debug END
+
 import type { Hash, Vector3 } from "@defold-typescript/types";
 import { defineScript } from "@defold-typescript/types";
 

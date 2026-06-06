@@ -98,6 +98,14 @@ describe("injectDebugBootstrap (managed BEGIN/END block)", () => {
     expect(out).toContain(FACTORY_SCRIPT);
   });
 
+  test("separates the END sentinel from following code with a blank line", () => {
+    // Biome's no-blank-line-before-statement rule flags an import that
+    // immediately follows the END line comment; FACTORY_SCRIPT opens with an
+    // import, so a fresh inject must leave a blank line between them.
+    const out = injectDebugBootstrap(FACTORY_SCRIPT);
+    expect(out).toContain(`${BLOCK_END}\n\nimport`);
+  });
+
   test("no-op when the enclosed text is already canonical", () => {
     const once = injectDebugBootstrap(FACTORY_SCRIPT);
     expect(injectDebugBootstrap(once)).toBe(once);
@@ -428,6 +436,26 @@ function runTsc(cwd: string): { code: number; output: string } {
   return { code: proc.exitCode, output: `${proc.stdout.toString()}${proc.stderr.toString()}` };
 }
 
+// Lint the wired file under the repo's own Biome config so the
+// organizeImports blank-line rule (which fired on the injected block above the
+// user's imports) is the same one the guard enforces. The repo config enables
+// `vcs.useIgnoreFile`, which makes Biome skip an out-of-tree temp path, so we
+// drop the `vcs` block into a local copy and lint from the project root.
+function writeBiomeConfig(cwd: string): void {
+  const config = JSON.parse(readFileSync(path.join(REPO_ROOT, "biome.json"), "utf8"));
+  delete config.vcs;
+  writeFileSync(path.join(cwd, "biome.json"), JSON.stringify(config));
+}
+
+function runBiome(cwd: string, rel: string): { code: number; output: string } {
+  const proc = Bun.spawnSync([path.join(BIN_DIR, "biome"), "check", "--error-on-warnings", rel], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  return { code: proc.exitCode, output: `${proc.stdout.toString()}${proc.stderr.toString()}` };
+}
+
 describe("setup-debug wired project type-checks (Bug 08 regression)", () => {
   test("the split ambient .d.ts + managed block compiles clean", async () => {
     const cwd = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-setup-debug-tsc-"));
@@ -439,6 +467,23 @@ describe("setup-debug wired project type-checks (Bug 08 regression)", () => {
       const { code, output } = runTsc(cwd);
       if (code !== 0) {
         throw new Error(`wired project failed to compile:\n${output}`);
+      }
+      expect(code).toBe(0);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("the wired entry script is Biome-clean (blank line around the END sentinel)", async () => {
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-setup-debug-biome-"));
+    try {
+      writeGuardProject(cwd);
+      writeBiomeConfig(cwd);
+      const result = await runSetupDebug({ cwd });
+      expect(result.ok).toBe(true);
+      const { code, output } = runBiome(cwd, "src/player.ts");
+      if (code !== 0) {
+        throw new Error(`wired entry script failed Biome:\n${output}`);
       }
       expect(code).toBe(0);
     } finally {
