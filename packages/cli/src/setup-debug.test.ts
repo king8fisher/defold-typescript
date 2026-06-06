@@ -1,12 +1,24 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
+  AMBIENT_DECLARATION,
+  AMBIENT_DTS_REL,
   addLldebuggerDependency,
-  BOOTSTRAP_MARKER,
+  BLOCK_BEGIN,
+  BLOCK_END,
   findEntryScriptCandidates,
   injectDebugBootstrap,
+  LEGACY_BOOTSTRAP_MARKER,
   LLDEBUGGER_URL,
   runSetupDebug,
 } from "./setup-debug";
@@ -21,6 +33,10 @@ export default defineScript({
   init() {},
 });
 `;
+
+const REPO_ROOT = path.resolve(import.meta.dir, "..", "..", "..");
+const TYPES_PKG = path.join(REPO_ROOT, "packages", "types");
+const BIN_DIR = path.join(REPO_ROOT, "node_modules", ".bin");
 
 describe("addLldebuggerDependency", () => {
   test("inserts dependencies#0 when none exist", () => {
@@ -59,15 +75,93 @@ describe("addLldebuggerDependency", () => {
   });
 });
 
-describe("injectDebugBootstrap", () => {
-  test("prepends the ambient module, import, and gated start behind a marker", () => {
+describe("AMBIENT_DECLARATION", () => {
+  test("carries @noResolution and the start signature, no inline import or gate", () => {
+    expect(AMBIENT_DECLARATION).toContain("/** @noResolution */");
+    expect(AMBIENT_DECLARATION).toContain('declare module "lldebugger.debug" {');
+    expect(AMBIENT_DECLARATION).toContain("export function start(): void;");
+    expect(AMBIENT_DECLARATION).not.toContain("import * as lldebugger");
+    expect(AMBIENT_DECLARATION).not.toContain("is_debug");
+  });
+});
+
+describe("injectDebugBootstrap (managed BEGIN/END block)", () => {
+  test("wraps the import and gated start in sentinels, no declare module", () => {
     const out = injectDebugBootstrap(FACTORY_SCRIPT);
-    expect(out.startsWith(BOOTSTRAP_MARKER)).toBe(true);
-    expect(out).toContain('declare module "lldebugger.debug"');
+    expect(out.startsWith(BLOCK_BEGIN)).toBe(true);
+    expect(out).toContain(BLOCK_BEGIN);
+    expect(out).toContain(BLOCK_END);
     expect(out).toContain('import * as lldebugger from "lldebugger.debug";');
-    expect(out).toContain("if (sys.get_engine_info().is_debug)");
+    expect(out).toContain("if (sys.get_engine_info().is_debug) {");
     expect(out).toContain("lldebugger.start();");
+    expect(out).not.toContain('declare module "lldebugger.debug"');
     expect(out).toContain(FACTORY_SCRIPT);
+  });
+
+  test("no-op when the enclosed text is already canonical", () => {
+    const once = injectDebugBootstrap(FACTORY_SCRIPT);
+    expect(injectDebugBootstrap(once)).toBe(once);
+  });
+
+  test("refreshes a drifted block, preserving lines outside the sentinels", () => {
+    const drifted = `${BLOCK_BEGIN}
+import * as lldebugger from "lldebugger.debug";
+// hand-edited stale wording
+lldebugger.start();
+${BLOCK_END}
+${FACTORY_SCRIPT}`;
+    const out = injectDebugBootstrap(drifted);
+    expect(out).not.toContain("hand-edited stale wording");
+    expect(out).toContain("if (sys.get_engine_info().is_debug) {");
+    expect(out).toContain(FACTORY_SCRIPT);
+    // exactly one managed block remains
+    expect(out.split(BLOCK_BEGIN).length - 1).toBe(1);
+    expect(out.split(BLOCK_END).length - 1).toBe(1);
+    // a second pass is now a no-op
+    expect(injectDebugBootstrap(out)).toBe(out);
+  });
+
+  test("upgrades a legacy single-marker block in place to exactly one managed block", () => {
+    const legacy = `${LEGACY_BOOTSTRAP_MARKER}
+/** @noResolution */
+declare module "lldebugger.debug" {
+  export function start(): void;
+}
+
+import * as lldebugger from "lldebugger.debug";
+
+if (sys.get_engine_info().is_debug) {
+  lldebugger.start();
+}
+
+${FACTORY_SCRIPT}`;
+    const out = injectDebugBootstrap(legacy);
+    expect(out).not.toContain(LEGACY_BOOTSTRAP_MARKER);
+    expect(out).not.toContain('declare module "lldebugger.debug"');
+    expect(out.split(BLOCK_BEGIN).length - 1).toBe(1);
+    expect(out.split(BLOCK_END).length - 1).toBe(1);
+    expect(out).toContain(FACTORY_SCRIPT);
+    expect(injectDebugBootstrap(out)).toBe(out);
+  });
+
+  test("refuses a BEGIN with no END", () => {
+    const broken = `${BLOCK_BEGIN}\nimport * as lldebugger from "lldebugger.debug";\n${FACTORY_SCRIPT}`;
+    expect(() => injectDebugBootstrap(broken)).toThrow(/malformed/i);
+  });
+
+  test("refuses an END with no BEGIN", () => {
+    const broken = `${BLOCK_END}\n${FACTORY_SCRIPT}`;
+    expect(() => injectDebugBootstrap(broken)).toThrow(/malformed/i);
+  });
+
+  test("refuses out-of-order sentinels", () => {
+    const broken = `${BLOCK_END}\nstuff\n${BLOCK_BEGIN}\n${FACTORY_SCRIPT}`;
+    expect(() => injectDebugBootstrap(broken)).toThrow(/malformed/i);
+  });
+
+  test("refuses duplicate blocks", () => {
+    const dup = `${BLOCK_BEGIN}\na\n${BLOCK_END}\n${BLOCK_BEGIN}\nb\n${BLOCK_END}\n`;
+    expect(() => injectDebugBootstrap(dup)).toThrow(/malformed/i);
   });
 
   test("mirrors the bootstrap snippet in the debugging guide exactly", () => {
@@ -75,23 +169,16 @@ describe("injectDebugBootstrap", () => {
       path.join(__dirname, "..", "..", "..", "docs", "guide", "debugging.md"),
       "utf8",
     );
-    const out = injectDebugBootstrap("");
-    for (const line of [
-      "/** @noResolution */",
-      'declare module "lldebugger.debug" {',
-      "export function start(): void;",
-      'import * as lldebugger from "lldebugger.debug";',
-      "if (sys.get_engine_info().is_debug) {",
-      "lldebugger.start();",
-    ]) {
-      expect(guide).toContain(line);
-      expect(out).toContain(line);
+    // Every line the tool emits (ambient declaration + managed block) appears
+    // in the guide. Checked line-by-line because the guide nests the fenced
+    // code under a numbered list, indenting each line.
+    const emitted = [
+      ...AMBIENT_DECLARATION.split("\n"),
+      ...injectDebugBootstrap("").split("\n"),
+    ].filter((line) => line.trim() !== "");
+    for (const line of emitted) {
+      expect(guide).toContain(line.trim());
     }
-  });
-
-  test("is idempotent when the marker is already present", () => {
-    const once = injectDebugBootstrap(FACTORY_SCRIPT);
-    expect(injectDebugBootstrap(once)).toBe(once);
   });
 });
 
@@ -144,7 +231,7 @@ function writeBaseProject(cwd: string): void {
 }
 
 describe("runSetupDebug", () => {
-  test("auto-selects the sole candidate, injects, and rewrites game.project", async () => {
+  test("writes the ambient .d.ts, the managed block, and game.project", async () => {
     const cwd = tempProject();
     try {
       writeBaseProject(cwd);
@@ -160,9 +247,37 @@ describe("runSetupDebug", () => {
       expect(result.ok).toBe(true);
       expect(chooserCalled).toBe(false);
       expect(result.written).toContain("src/player.ts");
+      expect(result.written).toContain(AMBIENT_DTS_REL);
       expect(result.written).toContain("game.project");
-      expect(readFileSync(path.join(cwd, "src", "player.ts"), "utf8")).toContain(BOOTSTRAP_MARKER);
+      expect(result.actions[AMBIENT_DTS_REL]).toBe("injected");
+      expect(result.actions["src/player.ts"]).toBe("injected");
+
+      const script = readFileSync(path.join(cwd, "src", "player.ts"), "utf8");
+      expect(script).toContain(BLOCK_BEGIN);
+      expect(script).not.toContain('declare module "lldebugger.debug"');
+      const dts = readFileSync(path.join(cwd, AMBIENT_DTS_REL), "utf8");
+      expect(dts).toContain("/** @noResolution */");
+      expect(dts).toContain("export function start(): void;");
       expect(readFileSync(path.join(cwd, "game.project"), "utf8")).toContain(LLDEBUGGER_URL);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("a clean re-run is a no-op (no duplicate block or dependency)", async () => {
+    const cwd = tempProject();
+    try {
+      writeBaseProject(cwd);
+      writeFileSync(path.join(cwd, "src", "player.ts"), FACTORY_SCRIPT);
+      await runSetupDebug({ cwd });
+      const result = await runSetupDebug({ cwd });
+      expect(result.ok).toBe(true);
+      expect(result.actions["src/player.ts"]).toBe("unchanged");
+      expect(result.actions[AMBIENT_DTS_REL]).toBe("unchanged");
+      const script = readFileSync(path.join(cwd, "src", "player.ts"), "utf8");
+      expect(script.split(BLOCK_BEGIN).length - 1).toBe(1);
+      const game = readFileSync(path.join(cwd, "game.project"), "utf8");
+      expect(game.split(LLDEBUGGER_URL).length - 1).toBe(1);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -186,10 +301,8 @@ describe("runSetupDebug", () => {
       expect(result.ok).toBe(true);
       expect(chooserCalled).toBe(false);
       expect(result.written).toContain("src/hud.ts");
-      expect(readFileSync(path.join(cwd, "src", "hud.ts"), "utf8")).toContain(BOOTSTRAP_MARKER);
-      expect(readFileSync(path.join(cwd, "src", "player.ts"), "utf8")).not.toContain(
-        BOOTSTRAP_MARKER,
-      );
+      expect(readFileSync(path.join(cwd, "src", "hud.ts"), "utf8")).toContain(BLOCK_BEGIN);
+      expect(readFileSync(path.join(cwd, "src", "player.ts"), "utf8")).not.toContain(BLOCK_BEGIN);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -210,7 +323,7 @@ describe("runSetupDebug", () => {
       });
       expect(result.ok).toBe(true);
       expect(result.written).toContain("src/player.ts");
-      expect(readFileSync(path.join(cwd, "src", "player.ts"), "utf8")).toContain(BOOTSTRAP_MARKER);
+      expect(readFileSync(path.join(cwd, "src", "player.ts"), "utf8")).toContain(BLOCK_BEGIN);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -226,10 +339,9 @@ describe("runSetupDebug", () => {
       expect(result.ok).toBe(false);
       expect(result.error).toContain("src/hud.ts");
       expect(result.error).toContain("src/player.ts");
-      expect(readFileSync(path.join(cwd, "src", "player.ts"), "utf8")).not.toContain(
-        BOOTSTRAP_MARKER,
-      );
+      expect(readFileSync(path.join(cwd, "src", "player.ts"), "utf8")).not.toContain(BLOCK_BEGIN);
       expect(readFileSync(path.join(cwd, "game.project"), "utf8")).not.toContain(LLDEBUGGER_URL);
+      expect(existsSync(path.join(cwd, AMBIENT_DTS_REL))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -269,6 +381,91 @@ describe("runSetupDebug", () => {
       const result = await runSetupDebug({ cwd });
       expect(result.manualSteps.length).toBeGreaterThan(0);
       expect(result.manualSteps.join("\n")).toMatch(/Fetch Libraries/i);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+// The regression teeth for Bug 08: the wired project must type-check clean.
+function linkTypes(cwd: string): void {
+  const scope = path.join(cwd, "node_modules", "@defold-typescript");
+  mkdirSync(scope, { recursive: true });
+  symlinkSync(TYPES_PKG, path.join(scope, "types"), "dir");
+}
+
+function writeGuardProject(cwd: string): void {
+  writeFileSync(path.join(cwd, "game.project"), "[project]\ntitle = demo\n");
+  mkdirSync(path.join(cwd, "src"), { recursive: true });
+  writeFileSync(path.join(cwd, "src", "player.ts"), FACTORY_SCRIPT);
+  writeFileSync(
+    path.join(cwd, "tsconfig.json"),
+    JSON.stringify(
+      {
+        compilerOptions: {
+          target: "ES2022",
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          lib: ["ES2022"],
+          strict: true,
+          skipLibCheck: true,
+          noEmit: true,
+        },
+        include: ["src/**/*.ts", "src/**/*.d.ts"],
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function runTsc(cwd: string): { code: number; output: string } {
+  const proc = Bun.spawnSync([path.join(BIN_DIR, "tsc"), "--noEmit", "-p", "tsconfig.json"], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  return { code: proc.exitCode, output: `${proc.stdout.toString()}${proc.stderr.toString()}` };
+}
+
+describe("setup-debug wired project type-checks (Bug 08 regression)", () => {
+  test("the split ambient .d.ts + managed block compiles clean", async () => {
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-setup-debug-tsc-"));
+    try {
+      writeGuardProject(cwd);
+      linkTypes(cwd);
+      const result = await runSetupDebug({ cwd });
+      expect(result.ok).toBe(true);
+      const { code, output } = runTsc(cwd);
+      if (code !== 0) {
+        throw new Error(`wired project failed to compile:\n${output}`);
+      }
+      expect(code).toBe(0);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("negative control: the old inline declare-module form fails the same compile", () => {
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-setup-debug-neg-"));
+    try {
+      writeGuardProject(cwd);
+      linkTypes(cwd);
+      const inlineForm = `/** @noResolution */
+declare module "lldebugger.debug" {
+  export function start(): void;
+}
+
+import * as lldebugger from "lldebugger.debug";
+
+if (sys.get_engine_info().is_debug) {
+  lldebugger.start();
+}
+
+${FACTORY_SCRIPT}`;
+      writeFileSync(path.join(cwd, "src", "player.ts"), inlineForm);
+      const { code } = runTsc(cwd);
+      expect(code).not.toBe(0);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

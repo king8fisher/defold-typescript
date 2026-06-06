@@ -172,6 +172,7 @@ export function dispatch(
               ? {
                   command: "setup-debug",
                   written: result.written,
+                  actions: result.actions,
                   manualSteps: result.manualSteps,
                 }
               : { command: "setup-debug", error: result.error ?? "setup-debug failed" },

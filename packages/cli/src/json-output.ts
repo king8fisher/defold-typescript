@@ -10,6 +10,7 @@ export interface RenderResultInput {
   readonly materializedSurface?: string | null;
   readonly installCommand?: string;
   readonly manualSteps?: readonly string[];
+  readonly actions?: Record<string, string>;
 }
 
 export function renderResult(input: RenderResultInput): string {
@@ -31,7 +32,8 @@ export function renderResult(input: RenderResultInput): string {
     "installCommand" in input
       ? { ...withMaterialized, installCommand: input.installCommand }
       : withMaterialized;
-  const payload =
+  const withManual =
     "manualSteps" in input ? { ...withInstall, manualSteps: input.manualSteps } : withInstall;
+  const payload = "actions" in input ? { ...withManual, actions: input.actions } : withManual;
   return `${JSON.stringify(payload)}\n`;
 }
