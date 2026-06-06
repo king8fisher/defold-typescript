@@ -20,10 +20,11 @@ The launcher is **Bun, not a shell script**. The upstream `lua-local` template r
 bunx @defold-typescript/cli setup-debug
 ```
 
-`setup-debug` is idempotent and does two things `init` cannot:
+`setup-debug` is idempotent and does three things `init` cannot:
 
 - Adds the `lldebugger` library dependency to `game.project` (at the next free `dependencies#N` index, skipped if already present).
-- Injects the gated `lldebugger.start()` bootstrap into your entry script, behind a stable marker comment so a re-run is a no-op.
+- Writes the ambient `src/lldebugger.debug.d.ts` (the `@noResolution declare module`) alongside the entry-script edit, regenerated whole and skipped when already current.
+- Injects the gated `lldebugger.start()` bootstrap into your entry script inside a managed `BEGIN`/`END` block. A re-run refreshes the block if its wording drifted and is otherwise a no-op; a legacy single-marker block from an older version is upgraded in place.
 
 It selects the entry script automatically when exactly one `src/**/*.ts` file calls a lifecycle factory (`defineScript`/`defineGuiScript`/`defineRenderScript`). With several candidates, pass `--script <path>` to choose one; run interactively (without `--json`) to pick from a prompt. `--json` emits a machine-readable `{command, ok, written, manualSteps}` result. The same command is available as the `defold-typescript:setup-debug` mise task.
 
@@ -46,22 +47,28 @@ The manual walkthrough below remains the fallback and documents exactly what `se
 
    This is our vendored, MIT-licensed snapshot of `ts-defold/defold-lldebugger`, hosted from this repo's releases — that is why the URL differs from the upstream docs. Then run *Project -> Fetch Libraries* in the Defold editor so the `lldebugger` Lua module is available to `require`.
 
-3. **Start the debugger from your entry script.** Add the debugger entry near the top of your main script, gated so it only runs in a debug build:
+3. **Start the debugger from your entry script.** First create an ambient declaration at `src/lldebugger.debug.d.ts` so TypeScript and TSTL both know the module without resolving it:
 
    ```ts
    /** @noResolution */
    declare module "lldebugger.debug" {
      export function start(): void;
    }
+   ```
 
+   Then add the debugger entry near the top of your main script, inside the managed block, gated so it only runs in a debug build:
+
+   ```ts
+   // defold-typescript:setup-debug BEGIN — managed block, do not edit
    import * as lldebugger from "lldebugger.debug";
 
    if (sys.get_engine_info().is_debug) {
      lldebugger.start();
    }
+   // defold-typescript:setup-debug END
    ```
 
-   The `@noResolution` ambient declaration tells TypeScript not to resolve the module and TSTL to keep the literal path, so the emitted Lua is `require("lldebugger.debug")` followed by `lldebugger.start()`. The `is_debug` guard keeps the call inert in release builds, so the entry is safe to leave in shipped code — it only activates in a debug build with the debugger attached.
+   The `@noResolution` ambient declaration must live in a `.d.ts`, not inline in a `.ts` — under `moduleResolution: "Bundler"` an inline `declare module` augmentation that the entry script also imports fails to type-check. With the declaration in the ambient file, TypeScript leaves the module unresolved and TSTL keeps the literal path, so the emitted Lua is `require("lldebugger.debug")` followed by `lldebugger.start()`. The `is_debug` guard keeps the call inert in release builds, so the entry is safe to leave in shipped code — it only activates in a debug build with the debugger attached. `setup-debug` writes both files for you; the `BEGIN`/`END` sentinels let a re-run refresh the block if its wording changes.
 
 ## Launching a debug session
 
