@@ -1,0 +1,146 @@
+import { describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { dispatch } from "./dispatch";
+
+const REPO_ROOT = path.resolve(import.meta.dir, "..", "..", "..");
+const TYPES_PKG = path.join(REPO_ROOT, "packages", "types");
+const BIN_DIR = path.join(REPO_ROOT, "node_modules", ".bin");
+
+function linkTypes(cwd: string): void {
+  const scope = path.join(cwd, "node_modules", "@defold-typescript");
+  mkdirSync(scope, { recursive: true });
+  symlinkSync(TYPES_PKG, path.join(scope, "types"), "dir");
+}
+
+function touch(cwd: string, rel: string, contents = ""): void {
+  const full = path.join(cwd, rel);
+  mkdirSync(path.dirname(full), { recursive: true });
+  writeFileSync(full, contents);
+}
+
+function scaffold(cwd: string, guiBody: string): void {
+  linkTypes(cwd);
+  touch(cwd, "src/ui/hud.gui_script");
+  touch(cwd, "src/rendering/camera.render_script");
+  touch(
+    cwd,
+    "src/ui/hud.ts",
+    [
+      'import { defineGuiScript } from "@defold-typescript/types/gui-script";',
+      "defineGuiScript({",
+      "  init() {",
+      guiBody,
+      "  },",
+      "});",
+    ].join("\n"),
+  );
+  touch(
+    cwd,
+    "src/rendering/camera.ts",
+    [
+      'import { defineRenderScript } from "@defold-typescript/types/render-script";',
+      "defineRenderScript({",
+      "  update() {",
+      "    render.clear({});",
+      "  },",
+      "});",
+    ].join("\n"),
+  );
+  touch(
+    cwd,
+    "tsconfig.json",
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          module: "ESNext",
+          moduleResolution: "bundler",
+          lib: ["ES2022"],
+          skipLibCheck: true,
+          strict: true,
+          noEmit: true,
+          types: ["@defold-typescript/types"],
+        },
+        include: ["src/**/*.ts"],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
+function captureWrite(append: (chunk: string) => void): NodeJS.WritableStream {
+  return {
+    write(chunk: string): boolean {
+      append(chunk);
+      return true;
+    },
+  } as NodeJS.WritableStream;
+}
+
+function build(cwd: string): void {
+  let stdout = "";
+  let stderr = "";
+  const code = dispatch(
+    ["build", cwd],
+    {
+      stdout: captureWrite((chunk) => {
+        stdout += chunk;
+      }),
+      stderr: captureWrite((chunk) => {
+        stderr += chunk;
+      }),
+    },
+    { sourceGeneratedDir: path.join(TYPES_PKG, "generated") },
+  );
+  if (typeof code !== "number") {
+    throw new Error("expected synchronous build");
+  }
+  if (code !== 0) {
+    throw new Error(`build failed:\n${stdout}${stderr}`);
+  }
+}
+
+function typecheckBuild(cwd: string): { code: number; output: string } {
+  const proc = Bun.spawnSync([path.join(BIN_DIR, "tsc"), "-b", "--noEmit"], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: 60_000,
+  });
+  return { code: proc.exitCode, output: `${proc.stdout.toString()}${proc.stderr.toString()}` };
+}
+
+describe("composite directory walls", () => {
+  test("tsc -b accepts a gui wall using the gui subpath factory and gui namespace", () => {
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-composite-walls-"));
+    try {
+      scaffold(cwd, '    gui.get_node("x");');
+      build(cwd);
+
+      const { code, output } = typecheckBuild(cwd);
+
+      if (code !== 0) {
+        throw new Error(`expected clean composite type-check, got:\n${output}`);
+      }
+      expect(code).toBe(0);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("tsc -b rejects render namespace access inside a gui wall", () => {
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-composite-walls-"));
+    try {
+      scaffold(cwd, "    render.clear({});");
+      build(cwd);
+
+      const { code } = typecheckBuild(cwd);
+
+      expect(code).not.toBe(0);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
