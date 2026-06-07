@@ -69,9 +69,3 @@ export function applyWallSelection(cwd: string, desiredDirs: readonly string[]):
   wireWallReferences(cwd, desired);
   return sortDirs(desired);
 }
-
-// Slice F replaces this with the `@inquirer/prompts` checkbox. Until then the
-// bare `wall` invocation on a TTY has nowhere to go.
-export function runWallInteractive(_cwd: string): Promise<DirectoryWall[]> {
-  throw new Error("interactive menu not wired");
-}
