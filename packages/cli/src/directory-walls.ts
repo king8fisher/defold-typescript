@@ -69,14 +69,22 @@ export function planSourceDirectoryWalls(cwd: string): DirectoryWall[] {
 
 interface WallTsconfig {
   readonly extends: string;
-  readonly compilerOptions: { readonly types: string[] };
+  readonly compilerOptions: {
+    readonly composite: true;
+    readonly typeRoots: null;
+    readonly types: string[];
+  };
+  readonly include: readonly ["**/*.ts"];
+  readonly exclude: readonly [];
 }
 
 export function directoryWallTsconfig(wall: DirectoryWall): WallTsconfig {
   const depth = wall.dir.split("/").length;
   return {
     extends: `${"../".repeat(depth)}tsconfig.json`,
-    compilerOptions: { types: [wall.typesEntrypoint] },
+    compilerOptions: { composite: true, typeRoots: null, types: [wall.typesEntrypoint] },
+    include: ["**/*.ts"],
+    exclude: [],
   };
 }
 
@@ -85,12 +93,85 @@ function writeJson(filePath: string, value: unknown): void {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+interface RootTsconfig {
+  exclude?: string[];
+  files?: string[];
+  references?: Array<{ path: string }>;
+  [key: string]: unknown;
+}
+
+function sortedWallDirs(walls: readonly DirectoryWall[]): string[] {
+  return walls
+    .map((w) => w.dir)
+    .filter((dir) => dir !== ".")
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+function isInsideAnyDir(rel: string, dirs: readonly string[]): boolean {
+  return dirs.some((dir) => rel === dir || rel.startsWith(`${dir}/`));
+}
+
+function hasRootOwnedTranspilerSources(cwd: string, wallDirs: readonly string[]): boolean {
+  const seen = new Set<string>();
+  for (const pattern of readBuildConfig(cwd).include) {
+    for (const match of scanFilesSync(cwd, pattern)) {
+      const rel = match.split(path.sep).join("/");
+      if (seen.has(rel) || !isTranspilerSource(rel) || isSkipped(rel)) {
+        continue;
+      }
+      seen.add(rel);
+      if (!isInsideAnyDir(rel, wallDirs)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export function wireWallReferences(cwd: string, walls: readonly DirectoryWall[]): void {
+  const rootPath = path.join(cwd, "tsconfig.json");
+  const current = JSON.parse(readFileSync(rootPath, "utf8")) as RootTsconfig;
+  const wallDirs = sortedWallDirs(walls);
+  const previousReferences = current.references ?? [];
+  const previousManaged = new Set(previousReferences.map((ref) => ref.path));
+  const nextExclude = [
+    ...new Set([
+      ...(current.exclude ?? []).filter((entry) => !previousManaged.has(entry)),
+      ...wallDirs,
+    ]),
+  ];
+  const next: RootTsconfig = { ...current };
+
+  if (wallDirs.length > 0) {
+    next.references = wallDirs.map((dir) => ({ path: dir }));
+  } else {
+    delete next.references;
+  }
+
+  if (nextExclude.length > 0) {
+    next.exclude = nextExclude;
+  } else {
+    delete next.exclude;
+  }
+
+  if (wallDirs.length > 0 && !hasRootOwnedTranspilerSources(cwd, wallDirs)) {
+    next.files = [];
+  } else if (previousReferences.length > 0 && JSON.stringify(next.files) === JSON.stringify([])) {
+    delete next.files;
+  }
+
+  if (JSON.stringify(next) !== JSON.stringify(current)) {
+    writeJson(rootPath, next);
+  }
+}
+
 export function syncDirectoryWalls(cwd: string, scriptKind: ScriptKind | null): DirectoryWall[] {
   // A mixed-kind project keeps the full surface project-wide, but its
   // single-kind source directories are narrowed per-directory; a non-null kind
   // means whole-project narrowing already applies, so no per-directory walls.
   const walls = scriptKind === null ? planSourceDirectoryWalls(cwd) : [];
   writeDirectoryWallTsconfigs(cwd, walls);
+  wireWallReferences(cwd, walls);
   return walls;
 }
 
@@ -114,12 +195,23 @@ export function writeDirectoryWallTsconfigs(cwd: string, walls: DirectoryWall[])
       // churned to JSON.stringify's layout on every build.
       const alreadyNarrowed =
         current.extends === desired.extends &&
-        JSON.stringify(options.types) === JSON.stringify(desired.compilerOptions.types);
+        options.composite === desired.compilerOptions.composite &&
+        options.typeRoots === desired.compilerOptions.typeRoots &&
+        JSON.stringify(options.types) === JSON.stringify(desired.compilerOptions.types) &&
+        JSON.stringify(current.include) === JSON.stringify(desired.include) &&
+        JSON.stringify(current.exclude) === JSON.stringify(desired.exclude);
       if (!alreadyNarrowed) {
         writeJson(target, {
           ...current,
           extends: desired.extends,
-          compilerOptions: { ...options, types: desired.compilerOptions.types },
+          compilerOptions: {
+            ...options,
+            composite: desired.compilerOptions.composite,
+            typeRoots: desired.compilerOptions.typeRoots,
+            types: desired.compilerOptions.types,
+          },
+          include: desired.include,
+          exclude: desired.exclude,
         });
         written.push(rel);
       }

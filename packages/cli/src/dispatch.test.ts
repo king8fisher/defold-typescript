@@ -50,6 +50,15 @@ afterEach(() => {
   rmSync(cwd, { recursive: true, force: true });
 });
 
+function expectedWallTsconfig(typesEntrypoint: string): unknown {
+  return {
+    extends: "../../tsconfig.json",
+    compilerOptions: { composite: true, typeRoots: null, types: [typesEntrypoint] },
+    include: ["**/*.ts"],
+    exclude: [],
+  };
+}
+
 describe("dispatch", () => {
   test("init <path> runs runInit and returns 0 on success", () => {
     writeFileSync(path.join(cwd, "game.project"), "[project]\n");
@@ -548,10 +557,9 @@ describe("dispatch", () => {
       { dir: "src/render", kind: "render-script" },
       { dir: "src/ui", kind: "gui-script" },
     ]);
-    expect(JSON.parse(readFileSync(path.join(cwd, "src/ui/tsconfig.json"), "utf8"))).toEqual({
-      extends: "../../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/gui-script"] },
-    });
+    expect(JSON.parse(readFileSync(path.join(cwd, "src/ui/tsconfig.json"), "utf8"))).toEqual(
+      expectedWallTsconfig("@defold-typescript/types/gui-script"),
+    );
     expect(existsSync(path.join(cwd, "src/render/tsconfig.json"))).toBe(true);
 
     rmSync(sourceGeneratedDir, { recursive: true, force: true });
@@ -943,14 +951,12 @@ describe("dispatch", () => {
 
     await handle?.waitForIdle();
 
-    expect(JSON.parse(readFileSync(path.join(cwd, "src/ui/tsconfig.json"), "utf8"))).toEqual({
-      extends: "../../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/gui-script"] },
-    });
-    expect(JSON.parse(readFileSync(path.join(cwd, "src/render/tsconfig.json"), "utf8"))).toEqual({
-      extends: "../../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/render-script"] },
-    });
+    expect(JSON.parse(readFileSync(path.join(cwd, "src/ui/tsconfig.json"), "utf8"))).toEqual(
+      expectedWallTsconfig("@defold-typescript/types/gui-script"),
+    );
+    expect(JSON.parse(readFileSync(path.join(cwd, "src/render/tsconfig.json"), "utf8"))).toEqual(
+      expectedWallTsconfig("@defold-typescript/types/render-script"),
+    );
 
     handle?.stop();
     const code = await result;
@@ -1017,10 +1023,9 @@ describe("dispatch", () => {
     triggerComponent?.("rename", "hud.gui_script");
     await handle?.waitForIdle();
 
-    expect(JSON.parse(readFileSync(path.join(cwd, "src/menu/tsconfig.json"), "utf8"))).toEqual({
-      extends: "../../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/gui-script"] },
-    });
+    expect(JSON.parse(readFileSync(path.join(cwd, "src/menu/tsconfig.json"), "utf8"))).toEqual(
+      expectedWallTsconfig("@defold-typescript/types/gui-script"),
+    );
 
     handle?.stop();
     const code = await result;

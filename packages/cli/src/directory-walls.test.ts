@@ -17,6 +17,7 @@ import {
   planDirectoryWalls,
   planSourceDirectoryWalls,
   syncDirectoryWalls,
+  wireWallReferences,
   writeDirectoryWallTsconfigs,
 } from "./directory-walls";
 import { excludedModulesForKind, type ScriptKind } from "./script-kind";
@@ -175,7 +176,13 @@ describe("directoryWallTsconfig", () => {
       directoryWallTsconfig(wall("src/ui", "gui-script", "@defold-typescript/types/gui-script")),
     ).toEqual({
       extends: "../../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/gui-script"] },
+      compilerOptions: {
+        composite: true,
+        typeRoots: null,
+        types: ["@defold-typescript/types/gui-script"],
+      },
+      include: ["**/*.ts"],
+      exclude: [],
     });
   });
 
@@ -186,7 +193,13 @@ describe("directoryWallTsconfig", () => {
       ),
     ).toEqual({
       extends: "../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/render-script"] },
+      compilerOptions: {
+        composite: true,
+        typeRoots: null,
+        types: ["@defold-typescript/types/render-script"],
+      },
+      include: ["**/*.ts"],
+      exclude: [],
     });
   });
 });
@@ -235,13 +248,95 @@ describe("writeDirectoryWallTsconfigs", () => {
     ]);
     expect(JSON.parse(readFileSync(path.join(cwd, "src/ui/tsconfig.json"), "utf8"))).toEqual({
       extends: "../../tsconfig.json",
-      compilerOptions: { strict: true, types: ["@defold-typescript/types/gui-script"] },
-      include: ["*.ts"],
+      compilerOptions: {
+        strict: true,
+        composite: true,
+        typeRoots: null,
+        types: ["@defold-typescript/types/gui-script"],
+      },
+      include: ["**/*.ts"],
+      exclude: [],
     });
   });
 
   test("writes nothing for an empty wall list", () => {
     expect(writeDirectoryWallTsconfigs(cwd, [])).toEqual([]);
+  });
+});
+
+describe("wireWallReferences", () => {
+  test("rewrites root references and merges wall dirs into exclude", () => {
+    touch(
+      "tsconfig.json",
+      JSON.stringify({ compilerOptions: { strict: true }, exclude: ["node_modules"] }),
+    );
+
+    wireWallReferences(cwd, [
+      wall("src/ui", "gui-script", "@defold-typescript/types/gui-script"),
+      wall("src/render", "render-script", "@defold-typescript/types/render-script"),
+    ]);
+
+    expect(JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8"))).toEqual({
+      compilerOptions: { strict: true },
+      exclude: ["node_modules", "src/render", "src/ui"],
+      files: [],
+      references: [{ path: "src/render" }, { path: "src/ui" }],
+    });
+  });
+
+  test("does not set root files when a non-wall source remains root-owned", () => {
+    touch("tsconfig.json", JSON.stringify({ include: ["src/**/*.ts"] }));
+    touch("src/shared/util.ts", "export const n = 1;");
+
+    wireWallReferences(cwd, [wall("src/ui", "gui-script", "@defold-typescript/types/gui-script")]);
+
+    expect(JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8"))).toEqual({
+      include: ["src/**/*.ts"],
+      exclude: ["src/ui"],
+      references: [{ path: "src/ui" }],
+    });
+  });
+
+  test("is idempotent when the root tsconfig is already wired", () => {
+    touch("tsconfig.json", JSON.stringify({ include: ["src/**/*.ts"] }));
+    const walls = [wall("src/ui", "gui-script", "@defold-typescript/types/gui-script")];
+
+    wireWallReferences(cwd, walls);
+    const before = statSync(path.join(cwd, "tsconfig.json")).mtimeMs;
+    wireWallReferences(cwd, walls);
+
+    expect(statSync(path.join(cwd, "tsconfig.json")).mtimeMs).toBe(before);
+  });
+
+  test("prunes removed wall references and excludes while preserving unrelated excludes", () => {
+    touch(
+      "tsconfig.json",
+      JSON.stringify({
+        exclude: ["node_modules", "src/render", "src/ui"],
+        references: [{ path: "src/render" }, { path: "src/ui" }],
+      }),
+    );
+
+    wireWallReferences(cwd, [wall("src/ui", "gui-script", "@defold-typescript/types/gui-script")]);
+
+    expect(JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8"))).toEqual({
+      exclude: ["node_modules", "src/ui"],
+      files: [],
+      references: [{ path: "src/ui" }],
+    });
+  });
+
+  test("zero walls removes managed graph keys and preserves unrelated fields", () => {
+    touch(
+      "tsconfig.json",
+      JSON.stringify({ include: ["src/**/*.ts"], references: [{ path: "src/ui" }] }),
+    );
+
+    wireWallReferences(cwd, []);
+
+    expect(JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8"))).toEqual({
+      include: ["src/**/*.ts"],
+    });
   });
 });
 
@@ -256,11 +351,27 @@ describe("syncDirectoryWalls", () => {
     expect(walls).toEqual(planSourceDirectoryWalls(cwd));
     expect(JSON.parse(readFileSync(path.join(cwd, "src/ui/tsconfig.json"), "utf8"))).toEqual({
       extends: "../../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/gui-script"] },
+      compilerOptions: {
+        composite: true,
+        typeRoots: null,
+        types: ["@defold-typescript/types/gui-script"],
+      },
+      include: ["**/*.ts"],
+      exclude: [],
     });
     expect(JSON.parse(readFileSync(path.join(cwd, "src/render/tsconfig.json"), "utf8"))).toEqual({
       extends: "../../tsconfig.json",
-      compilerOptions: { types: ["@defold-typescript/types/render-script"] },
+      compilerOptions: {
+        composite: true,
+        typeRoots: null,
+        types: ["@defold-typescript/types/render-script"],
+      },
+      include: ["**/*.ts"],
+      exclude: [],
+    });
+    expect(JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8"))).toMatchObject({
+      references: [{ path: "src/render" }, { path: "src/ui" }],
+      exclude: ["src/render", "src/ui"],
     });
   });
 
