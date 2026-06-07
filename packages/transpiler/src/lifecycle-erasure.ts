@@ -24,6 +24,15 @@ import { resolvesToDispatchExport } from "./message-dispatch-lowering";
 
 const FACTORY_MODULE = "@defold-typescript/types";
 const FACTORY_NAMES = new Set(["defineScript", "defineGuiScript", "defineRenderScript"]);
+// A walled source imports its factory from the matching kind subpath
+// (`@defold-typescript/types/gui-script`) to avoid pulling the cross-kind
+// `declare global` namespaces; those imports erase exactly like the bare one.
+const FACTORY_SPECIFIERS = new Set([
+  FACTORY_MODULE,
+  `${FACTORY_MODULE}/script`,
+  `${FACTORY_MODULE}/gui-script`,
+  `${FACTORY_MODULE}/render-script`,
+]);
 
 function resolvesToFactoryExport(callee: ts.Expression, checker: ts.TypeChecker): boolean {
   let symbol = checker.getSymbolAtLocation(callee);
@@ -241,8 +250,11 @@ function eraseFactoryCall(
   return statements;
 }
 
-function isFactoryOnlyImport(node: ts.ImportDeclaration): boolean {
-  if (!ts.isStringLiteral(node.moduleSpecifier) || node.moduleSpecifier.text !== FACTORY_MODULE) {
+export function isFactoryOnlyImport(node: ts.ImportDeclaration): boolean {
+  if (
+    !ts.isStringLiteral(node.moduleSpecifier) ||
+    !FACTORY_SPECIFIERS.has(node.moduleSpecifier.text)
+  ) {
     return false;
   }
   const clause = node.importClause;

@@ -73,11 +73,17 @@ function buildAmbientFiles(): Record<string, string> {
       "",
     ].join("\n"),
     // Per-kind subpath entrypoints exist as package exports for the editor.
-    // Their namespaces are already seeded ambiently below, so the transpiler
-    // only needs the specifiers to resolve — an empty module is enough.
-    "node_modules/@defold-typescript/types/script.d.ts": "export {};\n",
-    "node_modules/@defold-typescript/types/gui-script.d.ts": "export {};\n",
-    "node_modules/@defold-typescript/types/render-script.d.ts": "export {};\n",
+    // Their namespaces are already seeded ambiently below; mirror slice A's
+    // generated `generateKindIndex` output by re-exporting only the matching
+    // factory, so a walled source's subpath import resolves to it and the
+    // call-site erasure fires (otherwise the import lowers to a broken
+    // `require("@defold-typescript/types/gui-script")`).
+    "node_modules/@defold-typescript/types/script.d.ts":
+      'export { defineScript } from "./src/lifecycle";\n',
+    "node_modules/@defold-typescript/types/gui-script.d.ts":
+      'export { defineGuiScript } from "./src/lifecycle";\n',
+    "node_modules/@defold-typescript/types/render-script.d.ts":
+      'export { defineRenderScript } from "./src/lifecycle";\n',
   };
   // Seed every generated namespace so real multi-namespace user code (sprite,
   // physics, label, ...) resolves — not just the historical vmath/msg/go subset.
