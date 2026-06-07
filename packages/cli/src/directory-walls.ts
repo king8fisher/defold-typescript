@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
-import { detectSourceScriptKind, isTranspilerSource, readBuildConfig } from "./build-output";
+import { detectSourceOutputKind, isTranspilerSource, readBuildConfig } from "./build-output";
 import { scanFilesSync } from "./scan";
 import {
   isSkipped,
@@ -40,7 +40,10 @@ export function groupSourceScriptKindsByDirectory(cwd: string): Map<string, Set<
         continue;
       }
       seen.add(rel);
-      const kind = detectSourceScriptKind(readFileSync(path.join(cwd, match), "utf8"));
+      const kind = detectSourceOutputKind(readFileSync(path.join(cwd, match), "utf8"));
+      if (kind === "module") {
+        continue;
+      }
       const dir = path.posix.dirname(rel);
       let set = byDir.get(dir);
       if (set === undefined) {

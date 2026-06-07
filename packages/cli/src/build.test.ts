@@ -29,10 +29,16 @@ const DEFAULT_TSCONFIG = JSON.stringify(
   2,
 );
 
+const MAIN_SCRIPT =
+  'import { defineScript } from "@defold-typescript/types";\nexport default defineScript({ init() { vmath.vector3(0, 0, 0); } });\n';
+
+const EMPTY_SCRIPT =
+  'import { defineScript } from "@defold-typescript/types";\nexport default defineScript({});\n';
+
 describe("runBuild", () => {
-  test("transpiles a single src/main.ts to src/main.ts.script by default", () => {
+  test("transpiles a single lifecycle source to a Defold script component", () => {
     writeFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeFile("src/main.ts", "export const v = vmath.vector3(0, 0, 0);\n");
+    writeFile("src/main.ts", MAIN_SCRIPT);
 
     const result = runBuild({ cwd });
 
@@ -41,16 +47,16 @@ describe("runBuild", () => {
     expect(lua.length).toBeGreaterThan(0);
   });
 
-  test("preserves nested directory structure alongside source", () => {
+  test("preserves nested directory structure for helper modules alongside source", () => {
     writeFile("tsconfig.json", DEFAULT_TSCONFIG);
     writeFile("src/a.ts", "export const a = 1;\n");
     writeFile("src/b/c.ts", "export const c = 2;\n");
 
     const result = runBuild({ cwd });
 
-    expect(result.written.sort()).toEqual(["src/a.ts.script", "src/b/c.ts.script"].sort());
-    expect(existsSync(path.join(cwd, "src/a.ts.script"))).toBe(true);
-    expect(existsSync(path.join(cwd, "src/b/c.ts.script"))).toBe(true);
+    expect(result.written.sort()).toEqual(["src/a.lua", "src/b/c.lua"].sort());
+    expect(existsSync(path.join(cwd, "src/a.lua"))).toBe(true);
+    expect(existsSync(path.join(cwd, "src/b/c.lua"))).toBe(true);
   });
 
   test("outDir of '.' or '' behaves identically to absent (alongside)", () => {
@@ -63,7 +69,7 @@ describe("runBuild", () => {
           2,
         ),
       );
-      writeFile("src/main.ts", "export const a = 1;\n");
+      writeFile("src/main.ts", EMPTY_SCRIPT);
 
       const result = runBuild({ cwd });
 
@@ -85,7 +91,7 @@ describe("runBuild", () => {
         2,
       ),
     );
-    writeFile("src/main.ts", "export const a = 1;\n");
+    writeFile("src/main.ts", EMPTY_SCRIPT);
 
     const result = runBuild({ cwd });
 
@@ -116,7 +122,7 @@ describe("runBuild", () => {
     writeFile("src/main.ts", 'const x: number = "oops";\n');
 
     expect(() => runBuild({ cwd })).toThrow(/src\/main\.ts/);
-    expect(existsSync(path.join(cwd, "src/main.ts.script"))).toBe(false);
+    expect(existsSync(path.join(cwd, "src/main.lua"))).toBe(false);
   });
 
   test("resolves cross-file imports between src/ TypeScript files", () => {
@@ -127,19 +133,23 @@ describe("runBuild", () => {
     );
     writeFile(
       "src/main.ts",
-      "import { clamp } from './util';\nexport const limit = clamp(42, 0, 100);\n",
+      'import { defineScript } from "@defold-typescript/types";\nimport { clamp } from "./util";\nexport default defineScript({ init() { clamp(42, 0, 100); } });\n',
     );
 
     const result = runBuild({ cwd });
 
-    expect(result.written.sort()).toEqual(["src/main.ts.script", "src/util.ts.script"]);
+    expect(result.written.sort()).toEqual(["src/main.ts.script", "src/util.lua"]);
     expect(existsSync(path.join(cwd, "src/main.ts.script"))).toBe(true);
-    expect(existsSync(path.join(cwd, "src/util.ts.script"))).toBe(true);
+    expect(existsSync(path.join(cwd, "src/util.lua"))).toBe(true);
+    expect(existsSync(path.join(cwd, "src/util.ts.script"))).toBe(false);
+    const lua = readFileSync(path.join(cwd, "src/main.ts.script"), "utf8");
+    const requireId = lua.match(/require\("([^"]+)"\)/)?.[1];
+    expect(requireId?.split(".").join("/")).toBe("src/util");
   });
 
   test("writes a sibling .ts.script.map and a sourceMappingURL comment", () => {
     writeFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeFile("src/main.ts", "export const v = vmath.vector3(0, 0, 0);\n");
+    writeFile("src/main.ts", MAIN_SCRIPT);
 
     const result = runBuild({ cwd });
 
@@ -161,13 +171,19 @@ describe("runBuild", () => {
       'import { defineGuiScript } from "@defold-typescript/types";\nexport default defineGuiScript({});\n',
     );
     writeFile(
-      "src/main.ts",
-      'import { defineScript } from "@defold-typescript/types";\nexport default defineScript({});\n',
+      "src/camera.ts",
+      'import { defineRenderScript } from "@defold-typescript/types";\nexport default defineRenderScript({});\n',
     );
+    writeFile("src/main.ts", EMPTY_SCRIPT);
 
     const result = runBuild({ cwd });
 
-    expect(result.written.sort()).toEqual(["src/hud.ts.gui_script", "src/main.ts.script"]);
+    expect(result.written.sort()).toEqual([
+      "src/camera.ts.render_script",
+      "src/hud.ts.gui_script",
+      "src/main.ts.script",
+    ]);
+    expect(existsSync(path.join(cwd, "src/camera.ts.render_script"))).toBe(true);
     expect(existsSync(path.join(cwd, "src/hud.ts.gui_script"))).toBe(true);
     expect(existsSync(path.join(cwd, "src/main.ts.script"))).toBe(true);
   });

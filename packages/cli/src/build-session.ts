@@ -8,18 +8,16 @@ import {
 import {
   type BuildConfig,
   collectFailures,
-  computeScriptRel,
-  detectSourceScriptKind,
+  computeOutputRel,
+  detectSourceOutputKind,
   isTranspilerSource,
+  outputRelsForSource,
   readBuildConfig,
   throwIfFailures,
   toPosix,
   writeScriptFile,
 } from "./build-output";
 import { scanFilesSync } from "./scan";
-import type { ScriptKind } from "./script-kind";
-
-const ALL_SCRIPT_KINDS: readonly ScriptKind[] = ["script", "gui-script", "render-script"];
 
 export interface CreateBuildSessionOptions {
   readonly cwd: string;
@@ -39,10 +37,19 @@ export function createBuildSession(opts: CreateBuildSessionOptions): BuildSessio
   const config: BuildConfig = readBuildConfig(cwd);
   const session: TranspileSession = createTranspileSession();
 
+  function pruneOutputs(rel: string, keepRel?: string): void {
+    for (const outputRel of outputRelsForSource(rel, config)) {
+      if (outputRel !== keepRel && outputRel !== `${keepRel}.map`) {
+        rmSync(path.join(cwd, outputRel), { force: true });
+      }
+    }
+  }
+
   function writeOutputs(
     result: TranspileProjectResult,
     keys: readonly string[],
     sources: Record<string, string>,
+    pruneAlternatives = false,
   ): BuildResult {
     const failures = collectFailures(result.diagnostics);
     const written: string[] = [];
@@ -54,12 +61,15 @@ export function createBuildSession(opts: CreateBuildSessionOptions): BuildSessio
       if (lua === undefined) {
         continue;
       }
-      const scriptRel = computeScriptRel(rel, config, detectSourceScriptKind(sources[rel] ?? ""));
-      writeScriptFile(cwd, scriptRel, lua, result.sourceMaps[rel]);
-      written.push(scriptRel);
+      const outputRel = computeOutputRel(rel, config, detectSourceOutputKind(sources[rel] ?? ""));
+      if (pruneAlternatives) {
+        pruneOutputs(rel, outputRel);
+      }
+      writeScriptFile(cwd, outputRel, lua, result.sourceMaps[rel]);
+      written.push(outputRel);
     }
     throwIfFailures(failures);
-    return { written };
+    return { written: written.sort() };
   }
 
   function buildAll(): BuildResult {
@@ -96,21 +106,15 @@ export function createBuildSession(opts: CreateBuildSessionOptions): BuildSessio
 
     const result = session.update(changes);
 
-    // The removed file is gone, so its prior factory-derived kind is unknown;
-    // sweep every candidate suffix to avoid orphaning an output.
     for (const rel of sourceRemoved) {
-      for (const kind of ALL_SCRIPT_KINDS) {
-        const scriptAbs = path.join(cwd, computeScriptRel(rel, config, kind));
-        rmSync(scriptAbs, { force: true });
-        rmSync(`${scriptAbs}.map`, { force: true });
-      }
+      pruneOutputs(rel);
     }
 
     const changedSources: Record<string, string> = {};
     for (const rel of sourceChanged) {
       changedSources[rel] = changes[rel] ?? "";
     }
-    return writeOutputs(result, sourceChanged, changedSources);
+    return writeOutputs(result, sourceChanged, changedSources, true);
   }
 
   return { buildAll, applyEvents };

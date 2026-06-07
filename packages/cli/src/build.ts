@@ -3,8 +3,8 @@ import * as path from "node:path";
 import { transpileProject } from "@defold-typescript/transpiler";
 import {
   collectFailures,
-  computeScriptRel,
-  detectSourceScriptKind,
+  computeOutputRel,
+  detectSourceOutputKind,
   readBuildConfig,
   throwIfFailures,
   toPosix,
@@ -53,11 +53,11 @@ export function runBuild(opts: RunBuildOptions): RunBuildResult {
     if (!lua) {
       continue;
     }
-    const scriptRel = computeScriptRel(rel, config, detectSourceScriptKind(files[rel] ?? ""));
-    writeScriptFile(cwd, scriptRel, lua, result.sourceMaps[rel]);
-    written.push(scriptRel);
+    const outputRel = computeOutputRel(rel, config, detectSourceOutputKind(files[rel] ?? ""));
+    writeScriptFile(cwd, outputRel, lua, result.sourceMaps[rel]);
+    written.push(outputRel);
   }
 
   throwIfFailures(failures);
-  return { written };
+  return { written: written.sort() };
 }

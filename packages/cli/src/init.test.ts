@@ -204,7 +204,7 @@ describe("runInit (add-TS mode)", () => {
     expect(main).not.toContain("export function init");
   });
 
-  test("scaffolded .gitignore ignores generated Lua next to source", () => {
+  test("scaffolded .gitignore ignores generated Lua outputs next to source", () => {
     touch("game.project", "[project]\n");
 
     runInit({ cwd });
@@ -212,6 +212,8 @@ describe("runInit (add-TS mode)", () => {
     const gitignore = readFileSync(path.join(cwd, ".gitignore"), "utf8");
     expect(gitignore).toMatch(/^src\/\*\*\/\*\.ts\.script$/m);
     expect(gitignore).toMatch(/^src\/\*\*\/\*\.ts\.script\.map$/m);
+    expect(gitignore).toMatch(/^src\/\*\*\/\*\.lua$/m);
+    expect(gitignore).toMatch(/^src\/\*\*\/\*\.lua\.map$/m);
   });
 
   test("scaffolded .gitignore and biome.json exclude the gui/render-script suffixes too", () => {
@@ -230,6 +232,8 @@ describe("runInit (add-TS mode)", () => {
     };
     expect(biome.files.includes).toContain("!**/*.ts.gui_script");
     expect(biome.files.includes).toContain("!**/*.ts.render_script");
+    expect(biome.files.includes).toContain("!src/**/*.lua");
+    expect(biome.files.includes).toContain("!src/**/*.lua.map");
   });
 
   test("appends ignore lines to an existing .gitignore without clobbering, idempotently", () => {
@@ -242,6 +246,8 @@ describe("runInit (add-TS mode)", () => {
     expect(afterFirst).toContain("*.log");
     expect(afterFirst).toMatch(/^src\/\*\*\/\*\.ts\.script$/m);
     expect(afterFirst).toMatch(/^src\/\*\*\/\*\.ts\.script\.map$/m);
+    expect(afterFirst).toMatch(/^src\/\*\*\/\*\.lua$/m);
+    expect(afterFirst).toMatch(/^src\/\*\*\/\*\.lua\.map$/m);
 
     // A second run must not duplicate the ignore lines.
     const second = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-init-rerun-"));

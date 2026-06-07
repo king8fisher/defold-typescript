@@ -250,7 +250,10 @@ describe("dispatch", () => {
     writeFileSync(path.join(cwd, "tsconfig.json"), tsconfig);
     const srcDir = path.join(cwd, "src");
     mkdirSync(srcDir, { recursive: true });
-    writeFileSync(path.join(srcDir, "main.ts"), "export const a = 1;\n");
+    writeFileSync(
+      path.join(srcDir, "main.ts"),
+      'import { defineScript } from "@defold-typescript/types";\nexport default defineScript({});\n',
+    );
 
     const { io, out, err } = captureStreams();
     const code = dispatch(["build", cwd], io);
@@ -293,7 +296,10 @@ describe("dispatch", () => {
     writeFileSync(path.join(cwd, "tsconfig.json"), tsconfig);
     const srcDir = path.join(cwd, "src");
     mkdirSync(srcDir, { recursive: true });
-    writeFileSync(path.join(srcDir, "main.ts"), "export const a = 1;\n");
+    writeFileSync(
+      path.join(srcDir, "main.ts"),
+      'import { defineScript } from "@defold-typescript/types";\nexport default defineScript({});\n',
+    );
 
     const { io, out, err } = captureStreams();
     const code = dispatch(["build", "--json", cwd], io);

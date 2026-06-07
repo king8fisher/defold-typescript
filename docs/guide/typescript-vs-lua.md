@@ -89,18 +89,14 @@ You only `import` your own modules.
 
 ## File structure and script mapping
 
-You edit TypeScript under `src/`; the toolchain emits a Defold-loadable component
-beside each source. By default the scaffold sets no `outDir`, so:
+You edit TypeScript under `src/`; the toolchain emits Lua beside each source by default. Files that call lifecycle factories become Defold-loadable components, and helper-only files become Lua modules for imports:
 
 ```text
 src/main.ts   →   src/main.ts.script
+src/util.ts   →   src/util.lua
 ```
 
-`src/main.ts.script` is the transpiled Lua chunk. Defold resolves a resource by
-the extension after its last dot, so a `.ts.script` file is a valid `.script`
-component the engine loads directly — the `.ts` in the name only marks its
-TypeScript origin. Run `bunx @defold-typescript/cli build` once or
-`bunx @defold-typescript/cli watch` to keep it current.
+Defold resolves a resource by the extension after its last dot, so a `.ts.script` file is a valid `.script` component the engine loads directly — the `.ts` in the name only marks its TypeScript origin. `src/util.lua` is a plain Lua module whose path matches the `require("src.util")` emitted for `import "./util"`. Run `bunx @defold-typescript/cli build` once or `bunx @defold-typescript/cli watch` to keep outputs current.
 
 Lua scripts attach behaviour by defining bare global callbacks (`function
 init(self)`, `function on_input(self, action_id, action)`). In TypeScript you
