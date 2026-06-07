@@ -22,7 +22,8 @@ import {
   resolveCurrentSurfaceGeneratedDir,
 } from "./materialize";
 import { runSetupDebug } from "./setup-debug";
-import { applyWallSelection, currentWalledDirs, eligibleWalls, runWallInteractive } from "./wall";
+import { applyWallSelection, currentWalledDirs, eligibleWalls } from "./wall";
+import { type CheckboxPrompt, runWallInteractive } from "./wall-interactive";
 import {
   type RunWatchHandle,
   type RunWatchOptions,
@@ -50,6 +51,7 @@ export interface DispatchInternals {
   // the other commands), so tests inject the project root and TTY state here.
   readonly cwd?: string;
   readonly isTty?: boolean;
+  readonly wallCheckbox?: CheckboxPrompt;
 }
 
 const USAGE = "Usage: defold-typescript <init|build|watch|wall|setup-debug|defold> [path]\n";
@@ -452,7 +454,8 @@ export function dispatch(
       }
     }
 
-    const interactive = internals?.isTty ?? Boolean(process.stdout.isTTY);
+    // `--json` is machine-driven intent, so it never prompts even on a TTY.
+    const interactive = !json && (internals?.isTty ?? Boolean(process.stdout.isTTY));
     if (!interactive) {
       io.stderr.write(
         "defold-typescript wall: no directory given; pass <dir> or run in a terminal for the interactive menu\n",
@@ -461,7 +464,12 @@ export function dispatch(
     }
     return (async (): Promise<number> => {
       try {
-        reportWalls(await runWallInteractive(wallCwd));
+        reportWalls(
+          await runWallInteractive(
+            wallCwd,
+            internals?.wallCheckbox ? { checkbox: internals.wallCheckbox } : {},
+          ),
+        );
         return 0;
       } catch (err) {
         io.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);

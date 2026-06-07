@@ -1110,6 +1110,34 @@ describe("dispatch wall command", () => {
     expect(existsSync(path.join(cwd, "src/mix/tsconfig.json"))).toBe(false);
     expect("references" in readRoot()).toBe(false);
   });
+
+  test("bare wall on a TTY without --json runs the injected menu", async () => {
+    scaffoldWallProject();
+    const { io, out } = captureStreams();
+
+    const code = await dispatch(["wall"], io, {
+      cwd,
+      isTty: true,
+      wallCheckbox: async () => ["src/ui"],
+    });
+
+    expect(code).toBe(0);
+    expect(out()).toContain("src/ui");
+    expect(existsSync(path.join(cwd, "src/ui/tsconfig.json"))).toBe(true);
+    expect(readRoot().references).toEqual([{ path: "src/ui" }]);
+  });
+
+  test("bare wall --json on a TTY does not prompt — it errors like the non-TTY path", async () => {
+    scaffoldWallProject();
+    const { io, out, err } = captureStreams();
+
+    const code = await dispatch(["wall", "--json"], io, { cwd, isTty: true });
+
+    expect(code).toBe(1);
+    expect(out()).toBe("");
+    expect(err()).toContain("no directory given");
+    expect(existsSync(path.join(cwd, "src/ui/tsconfig.json"))).toBe(false);
+  });
 });
 
 const SETUP_DEBUG_SCRIPT = `import { defineScript } from "@defold-typescript/types";
