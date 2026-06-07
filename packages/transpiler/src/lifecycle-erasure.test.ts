@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import * as ts from "typescript";
+import { isFactoryOnlyImport } from "./lifecycle-erasure";
 import { transpile } from "./transpile";
 
 describe("lifecycle erasure", () => {
@@ -276,6 +278,128 @@ describe("lifecycle erasure", () => {
       "
     `);
     expect(result.lua).not.toContain("defineScript");
+  });
+
+  test("erases a defineGuiScript imported from the gui-script kind subpath", () => {
+    const source = [
+      'import { defineGuiScript } from "@defold-typescript/types/gui-script";',
+      "",
+      "defineGuiScript({",
+      "  init() {},",
+      "  update(self, dt) {},",
+      "});",
+      "",
+    ].join("\n");
+    const result = transpile(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.lua).toMatchInlineSnapshot(`
+      "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+      local ____exports = {}
+      function init()
+      end
+      function update(____self, dt)
+      end
+      return ____exports
+      "
+    `);
+    expect(result.lua).not.toContain("defineGuiScript");
+    expect(result.lua).not.toContain("require(");
+  });
+
+  test("erases a defineRenderScript imported from the render-script kind subpath", () => {
+    const source = [
+      'import { defineRenderScript } from "@defold-typescript/types/render-script";',
+      "",
+      "defineRenderScript({",
+      "  init() {},",
+      "  update(self, dt) {},",
+      "});",
+      "",
+    ].join("\n");
+    const result = transpile(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.lua).toMatchInlineSnapshot(`
+      "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+      local ____exports = {}
+      function init()
+      end
+      function update(____self, dt)
+      end
+      return ____exports
+      "
+    `);
+    expect(result.lua).not.toContain("defineRenderScript");
+    expect(result.lua).not.toContain("require(");
+  });
+
+  test("erases a defineScript imported from the script kind subpath", () => {
+    const source = [
+      'import { defineScript } from "@defold-typescript/types/script";',
+      "",
+      "defineScript({",
+      "  init() {},",
+      "  update(self, dt) {},",
+      "});",
+      "",
+    ].join("\n");
+    const result = transpile(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.lua).toMatchInlineSnapshot(`
+      "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+      local ____exports = {}
+      function init()
+      end
+      function update(____self, dt)
+      end
+      return ____exports
+      "
+    `);
+    expect(result.lua).not.toContain("defineScript");
+    expect(result.lua).not.toContain("require(");
+  });
+
+  test("isFactoryOnlyImport accepts kind subpaths but gates on the imported names", () => {
+    const firstImport = (source: string): ts.ImportDeclaration => {
+      const file = ts.createSourceFile("t.ts", source, ts.ScriptTarget.Latest, true);
+      const decl = file.statements.find(ts.isImportDeclaration);
+      if (decl === undefined) {
+        throw new Error("no import declaration in source");
+      }
+      return decl;
+    };
+
+    // Bare specifier (existing behavior) and the three kind subpaths all qualify.
+    expect(
+      isFactoryOnlyImport(firstImport('import { defineScript } from "@defold-typescript/types";')),
+    ).toBe(true);
+    expect(
+      isFactoryOnlyImport(
+        firstImport('import { defineGuiScript } from "@defold-typescript/types/gui-script";'),
+      ),
+    ).toBe(true);
+    expect(
+      isFactoryOnlyImport(
+        firstImport('import { defineRenderScript } from "@defold-typescript/types/render-script";'),
+      ),
+    ).toBe(true);
+    expect(
+      isFactoryOnlyImport(
+        firstImport('import { defineScript } from "@defold-typescript/types/script";'),
+      ),
+    ).toBe(true);
+
+    // A non-factory name from a kind subpath is left to the normal pipeline.
+    expect(
+      isFactoryOnlyImport(
+        firstImport('import { GuiScriptHooks } from "@defold-typescript/types/gui-script";'),
+      ),
+    ).toBe(false);
+    // A non-kind subpath is never treated as factory-only.
+    expect(
+      isFactoryOnlyImport(
+        firstImport('import { defineScript } from "@defold-typescript/types/core-types";'),
+      ),
+    ).toBe(false);
   });
 
   test("does not erase a non-factory local call of the same name", () => {
