@@ -93,10 +93,19 @@ describe("groupSourceScriptKindsByDirectory", () => {
     expect(groupSourceScriptKindsByDirectory(cwd)).toEqual(new Map([[".", new Set(["script"])]]));
   });
 
-  test("a factory-less helper module classifies as 'script'", () => {
+  test("a factory-less helper module is ignored", () => {
     writeTsconfig(["src/**/*.ts"]);
     touch("src/util.ts", "export const add = (a: number, b: number) => a + b;");
-    expect(groupSourceScriptKindsByDirectory(cwd)).toEqual(new Map([["src", new Set(["script"])]]));
+    expect(groupSourceScriptKindsByDirectory(cwd)).toEqual(new Map());
+  });
+
+  test("a component plus helper directory groups by only the component kind", () => {
+    writeTsconfig(["src/**/*.ts"]);
+    touch("src/ui/hud.ts", "export default defineGuiScript({});");
+    touch("src/ui/hud-util.ts", "export const add = (a: number, b: number) => a + b;");
+    expect(groupSourceScriptKindsByDirectory(cwd)).toEqual(
+      new Map<string, Set<ScriptKind>>([["src/ui", new Set(["gui-script"])]]),
+    );
   });
 
   test("a directory holding two kinds maps to a set containing both", () => {
@@ -145,9 +154,9 @@ describe("planSourceDirectoryWalls", () => {
     expect(planSourceDirectoryWalls(cwd)).toEqual([]);
   });
 
-  test("a source-free tree yields no descriptors", () => {
+  test("a helper-only source tree yields no descriptors", () => {
     writeTsconfig(["src/**/*.ts"]);
-    touch("src/.gitkeep");
+    touch("src/util.ts", "export const add = (a: number, b: number) => a + b;");
     expect(planSourceDirectoryWalls(cwd)).toEqual([]);
   });
 });

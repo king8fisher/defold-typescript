@@ -7,7 +7,7 @@ Open the Defold project folder in VSCode or any editor with TypeScript support. 
 The generated `tsconfig.json` sets:
 
 - `types: ["@defold-typescript/types"]` so Defold globals such as `vmath`, `msg`, and `print` type-check in `src/*.ts`.
-- no `outDir`, so the transpiled script lands next to its `.ts` source (`src/main.ts` -> `src/main.ts.script`) for Defold to load directly as a `.script` component (Defold resolves a resource by the extension after its last dot). Set a concrete `outDir` to collect the scripts under a separate tree instead.
+- no `outDir`, so generated Lua lands next to its `.ts` source. Lifecycle-factory files become Defold components (`src/main.ts` -> `src/main.ts.script`), while helper-only imports become Lua modules (`src/util.ts` -> `src/util.lua`). Set a concrete `outDir` to collect the outputs under a separate tree instead.
 - `strict: true` so project code gets normal TypeScript checks.
 
 VSCode's built-in TypeScript support reads this file automatically when the project folder is open.
@@ -60,7 +60,7 @@ An expanded snippet emits every lifecycle hook the installed `@defold-typescript
 1. **Restart the TypeScript server first.** A stale language-server process keeps the old type surface in memory after a dependency upgrade, so the error survives even once the right types are on disk. In VS Code, run *TypeScript: Restart TS Server* from the command palette. This clears most false positives.
 2. **Then check the types version.** `fixed_update` and `late_update` need `@defold-typescript/types >= 0.5.0`; a project whose resolved types lag the CLI that wrote the snippets genuinely lacks those hooks. Upgrade the dependency. `bunx @defold-typescript/cli@latest init --force` repins the managed `@defold-typescript/types` dependency to the CLI's own version.
 
-Edit TypeScript under `src/`. Treat the generated `.ts.script` and `.ts.script.map` files next to your sources as build output; the scaffolded `.gitignore` keeps them out of version control.
+Edit TypeScript under `src/`. Treat generated `.ts.script`/`.ts.gui_script`/`.ts.render_script` component files, helper `.lua` modules, and their `.map` siblings next to your sources as build output; the scaffolded `.gitignore` keeps them out of version control.
 
 ## Run the watch loop
 

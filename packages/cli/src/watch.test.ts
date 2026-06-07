@@ -96,10 +96,14 @@ function countMatches(haystack: string, needle: RegExp): number {
   return haystack.match(needle)?.length ?? 0;
 }
 
+function scriptSource(value: number): string {
+  return `import { defineScript } from "@defold-typescript/types";\nexport default defineScript({ init() { vmath.vector3(${value}, 0, 0); } });\n`;
+}
+
 describe("runWatch", () => {
   test("initial build runs once and writes Lua", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out } = captureStreams();
     const factory = makeFactory();
 
@@ -117,14 +121,14 @@ describe("runWatch", () => {
 
   test("single FS event triggers exactly one rebuild", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out } = captureStreams();
     const factory = makeFactory();
 
     const handle = runWatch({ cwd, stdout, stderr, watcherFactory: factory.factory });
     await handle.waitForIdle();
 
-    writeProjectFile("src/main.ts", "export const a = 2;\n");
+    writeProjectFile("src/main.ts", scriptSource(2));
     factory.trigger("change", "main.ts");
     await handle.waitForIdle();
 
@@ -136,7 +140,7 @@ describe("runWatch", () => {
 
   test("generated .ts.script/.ts.script.map events trigger no rebuild and print no failure", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out, err } = captureStreams();
     const factory = makeFactory();
 
@@ -161,7 +165,7 @@ describe("runWatch", () => {
 
   test("burst of events within debounce window coalesces to one rebuild", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out } = captureStreams();
     const factory = makeFactory();
 
@@ -185,7 +189,7 @@ describe("runWatch", () => {
 
   test("build error mid-session is logged and watcher stays alive; recovers on next event", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out, err } = captureStreams();
     const factory = makeFactory();
 
@@ -203,7 +207,7 @@ describe("runWatch", () => {
     ]);
     expect(settled).toBe("pending");
 
-    writeProjectFile("src/main.ts", "export const a = 3;\n");
+    writeProjectFile("src/main.ts", scriptSource(3));
     factory.trigger("change", "main.ts");
     await handle.waitForIdle();
 
@@ -234,7 +238,7 @@ describe("runWatch", () => {
 
   test("a change event rewrites only the event-bearing file, not an un-triggered sibling", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr } = captureStreams();
     const factory = makeFactory();
 
@@ -243,7 +247,7 @@ describe("runWatch", () => {
 
     // A sibling appears on disk after the initial build but never fires an event.
     writeProjectFile("src/other.ts", "export const b = 2;\n");
-    writeProjectFile("src/main.ts", "export const a = 2;\n");
+    writeProjectFile("src/main.ts", scriptSource(2));
     factory.trigger("change", "main.ts");
     await handle.waitForIdle();
 
@@ -256,7 +260,7 @@ describe("runWatch", () => {
 
   test("stop() closes the watcher and resolves done with 0", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr } = captureStreams();
     const factory = makeFactory();
 
@@ -272,7 +276,7 @@ describe("runWatch", () => {
 
   test("syncSurface runs once at startup before the first idle, even with no events", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr } = captureStreams();
     const factory = makeFactory();
     let syncCount = 0;
@@ -296,7 +300,7 @@ describe("runWatch", () => {
 
   test("the component watcher is opened over cwd (not src/) and closed on stop()", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr } = captureStreams();
     const main = makeFactory();
     const component = makeFactory();
@@ -322,7 +326,7 @@ describe("runWatch", () => {
 
   test("a component-file rename re-syncs the surface; a src change does not", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr } = captureStreams();
     const main = makeFactory();
     const component = makeFactory();
@@ -346,7 +350,7 @@ describe("runWatch", () => {
     await handle.waitForIdle();
     expect(syncCount).toBe(2);
 
-    writeProjectFile("src/main.ts", "export const a = 2;\n");
+    writeProjectFile("src/main.ts", scriptSource(2));
     main.trigger("change", "main.ts");
     await handle.waitForIdle();
     expect(syncCount).toBe(2);
@@ -357,7 +361,7 @@ describe("runWatch", () => {
 
   test("component watcher ignores .defold-types, build, and node_modules events", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr } = captureStreams();
     const main = makeFactory();
     const component = makeFactory();
@@ -389,7 +393,7 @@ describe("runWatch", () => {
 
   test("backslash skip-segment component events do not re-sync; a backslash real component does", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr } = captureStreams();
     const main = makeFactory();
     const component = makeFactory();
@@ -425,7 +429,7 @@ describe("runWatch", () => {
 
   test("json mode emits a single build NDJSON line at startup and no human line", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out } = captureStreams();
     const factory = makeFactory();
 
@@ -446,7 +450,7 @@ describe("runWatch", () => {
 
   test("json mode emits a rebuild event carrying changed and removed src keys", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     writeProjectFile("src/gone.ts", "export const b = 2;\n");
     const { stdout, stderr, out } = captureStreams();
     const factory = makeFactory();
@@ -454,7 +458,7 @@ describe("runWatch", () => {
     const handle = runWatch({ cwd, stdout, stderr, json: true, watcherFactory: factory.factory });
     await handle.waitForIdle();
 
-    writeProjectFile("src/main.ts", "export const a = 2;\n");
+    writeProjectFile("src/main.ts", scriptSource(2));
     rmSync(path.join(cwd, "src/gone.ts"));
     factory.trigger("change", "main.ts");
     factory.trigger("rename", "gone.ts");
@@ -473,7 +477,7 @@ describe("runWatch", () => {
 
   test("json mode writes a failing rebuild as an ok:false line to stdout, nothing to stderr", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out, err } = captureStreams();
     const factory = makeFactory();
 
@@ -497,14 +501,14 @@ describe("runWatch", () => {
 
   test("without json, startup and rebuild keep the human formatBuildLine output", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
-    writeProjectFile("src/main.ts", "export const a = 1;\n");
+    writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out } = captureStreams();
     const factory = makeFactory();
 
     const handle = runWatch({ cwd, stdout, stderr, watcherFactory: factory.factory });
     await handle.waitForIdle();
 
-    writeProjectFile("src/main.ts", "export const a = 2;\n");
+    writeProjectFile("src/main.ts", scriptSource(2));
     factory.trigger("change", "main.ts");
     await handle.waitForIdle();
 

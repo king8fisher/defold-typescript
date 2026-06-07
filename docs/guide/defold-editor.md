@@ -20,7 +20,7 @@ Run the TypeScript build before launching the game:
 bunx @defold-typescript/cli build
 ```
 
-By default the scaffolded `tsconfig.json` has no `outDir`, so the transpiled script lands next to its `.ts` source (`src/main.ts` -> `src/main.ts.script`). Defold resolves a resource by the extension after its last dot, so `src/main.ts.script` is a valid `.script` component that Defold loads directly from the project tree; keep it up to date with `build` or `watch` while you work. Set a concrete `outDir` if you prefer the scripts collected under a separate tree.
+By default the scaffolded `tsconfig.json` has no `outDir`, so generated Lua lands next to its `.ts` source. Lifecycle-factory files become Defold components (`src/main.ts` -> `src/main.ts.script`), while helper-only imports become Lua modules (`src/util.ts` -> `src/util.lua`). Keep generated output up to date with `build` or `watch` while you work. Set a concrete `outDir` if you prefer the outputs collected under a separate tree.
 
 ## Run the game
 

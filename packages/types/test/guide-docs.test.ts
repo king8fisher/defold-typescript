@@ -136,6 +136,19 @@ describe("docs/guide scaffold", () => {
     expect(body).toContain("typescript-vs-lua.md");
   });
 
+  test("guide build-output pages document helper modules as .lua outputs", async () => {
+    for (const rel of [
+      "add-typescript.md",
+      "editor-setup.md",
+      "defold-editor.md",
+      "getting-started.md",
+      "typescript-vs-lua.md",
+    ]) {
+      const body = await readGuide(rel);
+      expect(body).toContain("src/util.lua");
+    }
+  });
+
   test("docs/guide/debugging.md points at the pinned lldebugger release URL", async () => {
     const body = await readGuide("debugging.md");
     expect(body).toContain("releases/download/lldebugger-v1/lldebugger.zip");

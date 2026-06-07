@@ -61,35 +61,36 @@ const SCRIPT_SUFFIX_BY_KIND: Record<ScriptKind, string> = {
   "render-script": ".ts.render_script",
 };
 
+export type SourceOutputKind = ScriptKind | "module";
+
 // A `.ts` source carries no Defold component kind of its own; the lifecycle
 // factory it calls is the signal. The call is matched (trailing `(`) so a bare
 // import of all three factories does not decide the kind. Precedence
-// render > gui > script; a source using no factory stays the universal `script`
-// (preserving the pre-kind behavior for helper modules).
+// render > gui > script; a source using no factory emits as a Lua module.
 const FACTORY_KINDS: ReadonlyArray<readonly [ScriptKind, RegExp]> = [
   ["render-script", /\bdefineRenderScript\s*\(/],
   ["gui-script", /\bdefineGuiScript\s*\(/],
   ["script", /\bdefineScript\s*\(/],
 ];
 
-export function detectSourceScriptKind(source: string): ScriptKind {
+export function detectSourceOutputKind(source: string): SourceOutputKind {
   for (const [kind, re] of FACTORY_KINDS) {
     if (re.test(source)) {
       return kind;
     }
   }
-  return "script";
+  return "module";
 }
 
-export function computeScriptRel(
-  rel: string,
-  config: BuildConfig,
-  kind: ScriptKind = "script",
-): string {
+export function detectSourceScriptKind(source: string): ScriptKind {
+  const kind = detectSourceOutputKind(source);
+  return kind === "module" ? "script" : kind;
+}
+
+function relUnderOutDir(rel: string, config: BuildConfig): string {
   const { outDir, include } = config;
-  const suffix = SCRIPT_SUFFIX_BY_KIND[kind];
   if (outDir === undefined || outDir === "" || outDir === ".") {
-    return rel.replace(/\.ts$/, suffix);
+    return rel;
   }
   const includeBase =
     include
@@ -97,7 +98,33 @@ export function computeScriptRel(
       .filter((base) => rel.startsWith(base))
       .sort((a, b) => b.length - a.length)[0] ?? "";
   const relUnderBase = rel.slice(includeBase.length);
-  return path.posix.join(outDir, relUnderBase.replace(/\.ts$/, suffix));
+  return path.posix.join(outDir, relUnderBase);
+}
+
+export function computeOutputRel(rel: string, config: BuildConfig, kind: SourceOutputKind): string {
+  const baseRel = relUnderOutDir(rel, config);
+  if (kind === "module") {
+    return baseRel.replace(/\.ts$/, ".lua");
+  }
+  return baseRel.replace(/\.ts$/, SCRIPT_SUFFIX_BY_KIND[kind]);
+}
+
+export function computeScriptRel(
+  rel: string,
+  config: BuildConfig,
+  kind: ScriptKind = "script",
+): string {
+  return computeOutputRel(rel, config, kind);
+}
+
+export function outputRelsForSource(rel: string, config: BuildConfig): string[] {
+  const outputs = [
+    computeOutputRel(rel, config, "module"),
+    computeOutputRel(rel, config, "script"),
+    computeOutputRel(rel, config, "gui-script"),
+    computeOutputRel(rel, config, "render-script"),
+  ];
+  return outputs.flatMap((output) => [output, `${output}.map`]);
 }
 
 export function collectFailures(

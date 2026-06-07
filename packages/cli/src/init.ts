@@ -39,6 +39,8 @@ const GITIGNORE_LINES = [
   "src/**/*.ts.gui_script.map",
   "src/**/*.ts.render_script",
   "src/**/*.ts.render_script.map",
+  "src/**/*.lua",
+  "src/**/*.lua.map",
 ];
 
 const BIOME_JSON_CONTENT = {
@@ -51,6 +53,8 @@ const BIOME_JSON_CONTENT = {
       "!**/*.ts.script",
       "!**/*.ts.gui_script",
       "!**/*.ts.render_script",
+      "!src/**/*.lua",
+      "!src/**/*.lua.map",
     ],
   },
   formatter: {

@@ -3,7 +3,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
+  computeOutputRel,
   computeScriptRel,
+  detectSourceOutputKind,
   detectSourceScriptKind,
   isTranspilerSource,
   toPosix,
@@ -69,6 +71,23 @@ describe("computeScriptRel", () => {
   });
 });
 
+describe("detectSourceOutputKind", () => {
+  test("classifies helper-only sources as modules and factory calls as components", () => {
+    expect(detectSourceOutputKind("export function helper() { return 1; }")).toBe("module");
+    expect(detectSourceOutputKind("export default defineScript({});")).toBe("script");
+    expect(detectSourceOutputKind("export default defineGuiScript({});")).toBe("gui-script");
+    expect(detectSourceOutputKind("export default defineRenderScript({});")).toBe("render-script");
+  });
+
+  test("keys on the call, not the import: imports all but calls render", () => {
+    const source = [
+      'import { defineScript, defineGuiScript, defineRenderScript } from "@defold-typescript/types";',
+      "export default defineRenderScript({});",
+    ].join("\n");
+    expect(detectSourceOutputKind(source)).toBe("render-script");
+  });
+});
+
 describe("detectSourceScriptKind", () => {
   test("a defineGuiScript call is a gui-script", () => {
     expect(detectSourceScriptKind("export default defineGuiScript({ init() {} });")).toBe(
@@ -84,10 +103,6 @@ describe("detectSourceScriptKind", () => {
     expect(detectSourceScriptKind("export default defineScript({});")).toBe("script");
   });
 
-  test("a source using no factory defaults to script", () => {
-    expect(detectSourceScriptKind("export function helper() { return 1; }")).toBe("script");
-  });
-
   test("keys on the call, not the import: imports all but calls render", () => {
     const source = [
       'import { defineScript, defineGuiScript, defineRenderScript } from "@defold-typescript/types";',
@@ -97,7 +112,7 @@ describe("detectSourceScriptKind", () => {
   });
 });
 
-describe("computeScriptRel kind suffix", () => {
+describe("computeOutputRel and computeScriptRel kind suffix", () => {
   const include = ["src/**/*.ts"];
 
   test("gui-script emits a .ts.gui_script suffix", () => {
@@ -113,8 +128,20 @@ describe("computeScriptRel kind suffix", () => {
   });
 
   test("script emits the .ts.script suffix", () => {
-    expect(computeScriptRel("src/main.ts", { outDir: undefined, include }, "script")).toBe(
+    expect(computeOutputRel("src/main.ts", { outDir: undefined, include }, "script")).toBe(
       "src/main.ts.script",
+    );
+  });
+
+  test("module emits a .lua path alongside source", () => {
+    expect(computeOutputRel("src/util.ts", { outDir: undefined, include }, "module")).toBe(
+      "src/util.lua",
+    );
+  });
+
+  test("outDir mode re-roots module paths after stripping the include base", () => {
+    expect(computeOutputRel("src/util.ts", { outDir: "build", include }, "module")).toBe(
+      "build/util.lua",
     );
   });
 
