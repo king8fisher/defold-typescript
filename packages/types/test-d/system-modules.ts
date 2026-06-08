@@ -41,7 +41,7 @@ void _metaValueType;
 const _world: unknown = b2d.get_world();
 const _signum: number = crash.get_signum(0);
 const _img: Record<string | number, unknown> | unknown = image.load("data", {});
-const _mounts: Record<string | number, unknown> = liveupdate.get_mounts();
+const _mounts: { name: string; uri: string; priority: number }[] = liveupdate.get_mounts();
 const _mem: number = profiler.get_memory_usage();
 const _socketTime: number = socket.gettime();
 void _buf;

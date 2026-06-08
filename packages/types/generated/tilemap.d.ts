@@ -85,7 +85,7 @@ declare global {
      * // }
      * ```
      */
-    function get_tile_info(url: string | Hash | Url, layer: string | Hash, x: number, y: number): Record<string | number, unknown>;
+    function get_tile_info(url: string | Hash | Url, layer: string | Hash, x: number, y: number): { index: number; h_flip: boolean; v_flip: boolean; rotate_90: boolean };
     /**
      * Retrieves all the tiles for the specified layer in the tilemap.
      * It returns a table of rows where the keys are the

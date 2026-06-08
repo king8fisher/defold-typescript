@@ -135,18 +135,43 @@ export const HOMOGENEOUS_ARRAY_SLOTS: ReadonlyMap<string, string | readonly stri
 
 export type TableSlotCuration =
   | { kind: "mapping"; key: string; value: string }
-  | { kind: "array"; element: string | readonly string[] };
+  | { kind: "array"; element: string | readonly string[] }
+  | { kind: "object"; fields: readonly TableField[] }
+  | { kind: "array-object"; fields: readonly TableField[] };
 
 const SOCKET_HANDLE_TOKENS = ["client", "master", "unconnected"] as const;
 
 export const TABLE_SLOT_CURATIONS: ReadonlyMap<string, TableSlotCuration> = new Map([
   ["collectionfactory.create:return:ids", { kind: "mapping", key: "hash", value: "hash" }],
+  [
+    "liveupdate.get_mounts:return:mounts",
+    {
+      kind: "array-object",
+      fields: [
+        { name: "name", types: ["string"] },
+        { name: "uri", types: ["string"] },
+        { name: "priority", types: ["number"] },
+      ],
+    },
+  ],
   ["physics.raycast:param:groups", { kind: "array", element: "hash" }],
   ["physics.raycast_async:param:groups", { kind: "array", element: "hash" }],
   ["socket.select:param:recvt", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
   ["socket.select:param:sendt", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
   ["socket.select:return:sockets_r", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
   ["socket.select:return:sockets_w", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
+  [
+    "tilemap.get_tile_info:return:tile_info",
+    {
+      kind: "object",
+      fields: [
+        { name: "index", types: ["number"] },
+        { name: "h_flip", types: ["boolean"] },
+        { name: "v_flip", types: ["boolean"] },
+        { name: "rotate_90", types: ["boolean"] },
+      ],
+    },
+  ],
 ]);
 
 /**
@@ -797,6 +822,9 @@ function mapSlotUnion(
         ts = `LuaMap<${mapType(mapping.key)}, ${mapType(mapping.value)}>`;
       } else if (element !== undefined) {
         ts = arrayTypeFromTokens(element, mapType);
+      } else if (curation?.kind === "object" || curation?.kind === "array-object") {
+        const object = inlineTableType(curation.fields, mapType, optionalFields);
+        ts = curation.kind === "array-object" ? `${object}[]` : object;
       } else {
         const fields = parseTableFields(doc, resolver);
         if (fields !== null) {

@@ -3,10 +3,12 @@ import bufferDoc from "../fixtures/buffer_doc.json" with { type: "json" };
 import collectionfactoryDoc from "../fixtures/collectionfactory_doc.json" with { type: "json" };
 import goDoc from "../fixtures/go_doc.json" with { type: "json" };
 import guiDoc from "../fixtures/gui_doc.json" with { type: "json" };
+import liveupdateDoc from "../fixtures/liveupdate_doc.json" with { type: "json" };
 import physicsDoc from "../fixtures/physics_doc.json" with { type: "json" };
 import resourceDoc from "../fixtures/resource_doc.json" with { type: "json" };
 import socketDoc from "../fixtures/socket_doc.json" with { type: "json" };
 import sysDoc from "../fixtures/sys_doc.json" with { type: "json" };
+import tilemapDoc from "../fixtures/tilemap_doc.json" with { type: "json" };
 import vmathDoc from "../fixtures/vmath_doc.json" with { type: "json" };
 import { type ApiFunction, type ApiModule, parseDefoldApiDoc } from "./api-doc";
 import {
@@ -1717,6 +1719,17 @@ describe("TABLE_SLOT_CURATIONS", () => {
   test("holds exactly the mixed-slot table recoveries", () => {
     expect([...TABLE_SLOT_CURATIONS]).toEqual([
       ["collectionfactory.create:return:ids", { kind: "mapping", key: "hash", value: "hash" }],
+      [
+        "liveupdate.get_mounts:return:mounts",
+        {
+          kind: "array-object",
+          fields: [
+            { name: "name", types: ["string"] },
+            { name: "uri", types: ["string"] },
+            { name: "priority", types: ["number"] },
+          ],
+        },
+      ],
       ["physics.raycast:param:groups", { kind: "array", element: "hash" }],
       ["physics.raycast_async:param:groups", { kind: "array", element: "hash" }],
       [
@@ -1734,6 +1747,18 @@ describe("TABLE_SLOT_CURATIONS", () => {
       [
         "socket.select:return:sockets_w",
         { kind: "array", element: ["client", "master", "unconnected"] },
+      ],
+      [
+        "tilemap.get_tile_info:return:tile_info",
+        {
+          kind: "object",
+          fields: [
+            { name: "index", types: ["number"] },
+            { name: "h_flip", types: ["boolean"] },
+            { name: "v_flip", types: ["boolean"] },
+            { name: "rotate_90", types: ["boolean"] },
+          ],
+        },
       ],
     ]);
     expect(MAPPING_TABLE_SLOTS.size).toBe(3);
@@ -1778,6 +1803,34 @@ describe("TABLE_SLOT_CURATIONS", () => {
     const socketHandles = '(Opaque<"client"> | Opaque<"master"> | Opaque<"unconnected">)[]';
     expect(out).toContain(
       `function select(recvt: ${socketHandles}, sendt: ${socketHandles}, timeout?: number): LuaMultiReturn<[${socketHandles}, ${socketHandles}, string | unknown]>;`,
+    );
+  });
+
+  test("liveupdate.get_mounts recovers an array of mount records", () => {
+    const module = parseDefoldApiDoc(liveupdateDoc);
+    const out = emitDeclarations({
+      ...module,
+      functions: [requireFunction(module, "liveupdate.get_mounts")],
+    });
+    expect(out).toContain(
+      "function get_mounts(): { name: string; uri: string; priority: number }[];",
+    );
+  });
+
+  test("tilemap.get_tile_info recovers an object while get_tiles stays deferred", () => {
+    const module = parseDefoldApiDoc(tilemapDoc);
+    const out = emitDeclarations({
+      ...module,
+      functions: [
+        requireFunction(module, "tilemap.get_tile_info"),
+        requireFunction(module, "tilemap.get_tiles"),
+      ],
+    });
+    expect(out).toContain(
+      "function get_tile_info(url: string | Hash | Url, layer: string | Hash, x: number, y: number): { index: number; h_flip: boolean; v_flip: boolean; rotate_90: boolean };",
+    );
+    expect(out).toContain(
+      "function get_tiles(url: string | Hash | Url, layer: string | Hash): Record<string | number, unknown>;",
     );
   });
 });
