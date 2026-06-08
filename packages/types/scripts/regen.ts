@@ -6,7 +6,12 @@ import { emitDeclarations } from "../src/emit-dts";
 import { emitBuiltinMessages, parseMessagesDoc } from "../src/emit-messages";
 import type { TranslationStore } from "../src/example-store";
 import { wrapAsAmbientGlobal } from "../src/publish-dts";
-import { type DownloadRefDoc, refDocCacheDir, resolveRefDoc } from "./doc-source";
+import {
+  type DocSourceProvenance,
+  type DownloadRefDoc,
+  refDocCacheDir,
+  resolveRefDoc,
+} from "./doc-source";
 import { loadTranslations } from "./example-store-io";
 import { type readZip, SYNC_MANIFEST, type SyncManifestEntry } from "./sync-api-docs";
 
@@ -75,6 +80,7 @@ export interface ModuleManifestEntry {
   readonly outFile: string;
   readonly skipFunctions?: readonly string[];
   readonly importsFrom?: string;
+  readonly sourceProvenance?: DocSourceProvenance;
 }
 
 export interface ResolveTargetOptions {
@@ -97,7 +103,7 @@ export async function resolveTargetModules(
   if (source == null) {
     return loadTargetModules(target, opts.packageRoot);
   }
-  const { zip } = await resolveRefDoc({
+  const { zip, provenance } = await resolveRefDoc({
     version: source.version,
     cacheDir: opts.cacheDir ?? refDocCacheDir(),
     ...(opts.download ? { download: opts.download } : {}),
@@ -116,6 +122,7 @@ export async function resolveTargetModules(
       doc: JSON.parse(zip.read(sync.zipEntry)),
       outFile: module.outFile,
       importsFrom: target.coreTypesImport,
+      sourceProvenance: provenance,
     };
     return module.skipFunctions ? { ...entry, skipFunctions: module.skipFunctions } : entry;
   });
