@@ -17,6 +17,16 @@ import type { SelectedApiSurface } from "./api-surface";
 
 const MATERIALIZED_ROOT = ".defold-types";
 
+// The materialized surface must not mint its own copy of the branded engine
+// primitives: `Hash` & co. are `unique symbol`-branded per declaration, so a
+// copied `core-types.d.ts` is nominally distinct from the installed
+// `@defold-typescript/types` a consumer imports from, and the two never unify
+// (a consumer comparing `message_id === hash(...)` or assigning an imported
+// `Hash` would get TS2367/TS2741). Re-export the package's copy instead so the
+// ambient surface shares one brand. `engine-globals.d.ts` stays copied; its
+// relative `./core-types` import resolves to this re-export.
+const CORE_TYPES_REEXPORT = 'export * from "@defold-typescript/types/core-types";\n';
+
 export interface MaterializeApiSurfaceOptions {
   readonly cwd: string;
   readonly surface: SelectedApiSurface;
@@ -92,7 +102,7 @@ export function materializeApiSurface(
     );
   }
   if (includeCoreTypes) {
-    writeFileSync(path.join(absDir, "core-types.d.ts"), readFileSync(coreTypesSrc, "utf8"));
+    writeFileSync(path.join(absDir, "core-types.d.ts"), CORE_TYPES_REEXPORT);
   }
   if (includeEngineGlobals) {
     writeFileSync(path.join(absDir, "engine-globals.d.ts"), readFileSync(engineGlobalsSrc, "utf8"));
@@ -227,7 +237,7 @@ export async function materializeRefDocSurface(
       destDir: absDir,
       ...(resolveOpts ? { resolveOpts } : {}),
     });
-    copyFileSync(path.join(root, "src", "core-types.ts"), path.join(absDir, "core-types.d.ts"));
+    writeFileSync(path.join(absDir, "core-types.d.ts"), CORE_TYPES_REEXPORT);
     copyFileSync(
       path.join(root, "src", "engine-globals.d.ts"),
       path.join(absDir, "engine-globals.d.ts"),
