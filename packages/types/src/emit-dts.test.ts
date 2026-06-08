@@ -4,6 +4,7 @@ import goDoc from "../fixtures/go_doc.json" with { type: "json" };
 import guiDoc from "../fixtures/gui_doc.json" with { type: "json" };
 import physicsDoc from "../fixtures/physics_doc.json" with { type: "json" };
 import resourceDoc from "../fixtures/resource_doc.json" with { type: "json" };
+import socketDoc from "../fixtures/socket_doc.json" with { type: "json" };
 import sysDoc from "../fixtures/sys_doc.json" with { type: "json" };
 import vmathDoc from "../fixtures/vmath_doc.json" with { type: "json" };
 import { type ApiFunction, type ApiModule, parseDefoldApiDoc } from "./api-doc";
@@ -1673,6 +1674,22 @@ describe("TABLE_SLOT_CURATIONS", () => {
       ["collectionfactory.create:return:ids", { kind: "mapping", key: "hash", value: "hash" }],
       ["physics.raycast:param:groups", { kind: "array", element: "hash" }],
       ["physics.raycast_async:param:groups", { kind: "array", element: "hash" }],
+      [
+        "socket.select:param:recvt",
+        { kind: "array", element: ["client", "master", "unconnected"] },
+      ],
+      [
+        "socket.select:param:sendt",
+        { kind: "array", element: ["client", "master", "unconnected"] },
+      ],
+      [
+        "socket.select:return:sockets_r",
+        { kind: "array", element: ["client", "master", "unconnected"] },
+      ],
+      [
+        "socket.select:return:sockets_w",
+        { kind: "array", element: ["client", "master", "unconnected"] },
+      ],
     ]);
     expect(MAPPING_TABLE_SLOTS.size).toBe(3);
     expect(HOMOGENEOUS_ARRAY_SLOTS.size).toBe(6);
@@ -1704,6 +1721,18 @@ describe("TABLE_SLOT_CURATIONS", () => {
     );
     expect(out).toContain(
       "function raycast_async(from: Vector3, to: Vector3, groups: Hash[], request_id?: number): void;",
+    );
+  });
+
+  test("socket.select recovers input and output socket handle arrays", () => {
+    const module = parseDefoldApiDoc(socketDoc);
+    const out = emitDeclarations({
+      ...module,
+      functions: [requireFunction(module, "socket.select")],
+    });
+    const socketHandles = '(Opaque<"client"> | Opaque<"master"> | Opaque<"unconnected">)[]';
+    expect(out).toContain(
+      `function select(recvt: ${socketHandles}, sendt: ${socketHandles}, timeout?: number): LuaMultiReturn<[${socketHandles}, ${socketHandles}, string | unknown]>;`,
     );
   });
 });
