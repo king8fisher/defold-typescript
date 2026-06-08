@@ -13,3 +13,11 @@ builtins/
 # Local install artifacts, if you choose to `bun install` here.
 /node_modules/
 .defold-types/
+src/**/*.ts.script
+src/**/*.ts.script.map
+src/**/*.ts.gui_script
+src/**/*.ts.gui_script.map
+src/**/*.ts.render_script
+src/**/*.ts.render_script.map
+src/**/*.lua
+src/**/*.lua.map

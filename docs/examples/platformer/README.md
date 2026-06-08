@@ -48,6 +48,22 @@ mise run example-watch      # rebuild on every save
 the materialized surface; `git checkout docs/examples/platformer/tsconfig.json`
 restores the committed `paths` form.
 
+### Refreshing the committed scaffold
+
+```sh
+mise run example:update      # or: bun scripts/example-update.ts
+```
+
+`example:update` is the maintainer's manual pre-publish refresh — the
+local-source twin of the published `defold-typescript:upgrade` task. It re-runs
+the working-tree CLI (`init --force` then `build`) against the example, then
+restores the curated identity: it keeps the hand-authored paths-based
+`tsconfig.json`, drops the scaffolded files the example deliberately omits
+(`package.json`, `biome.json`, `src/main.ts`), and leaves only the legitimate
+managed refreshes (`.gitignore`, `mise.toml` tasks) plus the regenerated
+gitignored artifacts. Run it when the scaffold or the pinned Defold version
+changes so the committed example never silently diverges from source.
+
 ## Status — what this conversion proved, and what it does not
 
 Working end to end: the four lifecycle hooks (`init`, `fixed_update`,

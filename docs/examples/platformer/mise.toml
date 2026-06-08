@@ -9,6 +9,11 @@ description = "Watch and rebuild the TypeScript sources with the defold-typescri
 run = "bunx @defold-typescript/cli watch"
 
 # managed by @defold-typescript
+[tasks."defold-typescript:setup-debug"]
+description = "Wire the lldebugger game.project dependency and entry-script bootstrap with the defold-typescript CLI"
+run = "bunx @defold-typescript/cli setup-debug"
+
+# managed by @defold-typescript
 [tasks."defold-typescript:upgrade"]
 description = "Upgrade the defold-typescript CLI to its latest release and re-pin the types dependency"
-run = ["bunx @defold-typescript/cli@latest init --force", "bun install"]
+run = ["bunx @defold-typescript/cli@latest init --force --suppress-install-reminder", "bun install"]
