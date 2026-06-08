@@ -41,6 +41,10 @@ run = "bun scripts/release.ts"
 description = "Compile the platformer example (docs/examples/platformer) once with the local working-tree CLI"
 run = "bun packages/cli/src/bin.ts build docs/examples/platformer"
 
+[tasks."example:update"]
+description = "Re-sync the platformer example to the working-tree CLI (init --force + build) — manual pre-publish refresh"
+run = "bun scripts/example-update.ts"
+
 [tasks."example:watch"]
 description = "Watch and recompile the platformer example with the local working-tree CLI"
 run = "bun packages/cli/src/bin.ts watch docs/examples/platformer"
