@@ -20,6 +20,9 @@
     "./render-script": {
       "types": "./generated/kinds/render-script.d.ts"
     },
+    "./core-types": {
+      "types": "./src/core-types.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [

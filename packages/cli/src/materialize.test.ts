@@ -6,6 +6,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import * as os from "node:os";
@@ -262,6 +263,67 @@ describe("ensureMaterializedReference", () => {
 
     expect(readFileSync(path.join(cwd, "tsconfig.json"), "utf8")).toBe(before);
     expect(existsSync(path.join(cwd, ".gitignore"))).toBe(false);
+  });
+});
+
+describe("materializeApiSurface consumer proof — imported + ambient types unify (bug-11)", () => {
+  test("a built consumer importing Hash and using ambient hash() type-checks", () => {
+    const pkgRoot = path.resolve(import.meta.dir, "..", "..", "types");
+    const gen = path.join(pkgRoot, "generated");
+
+    const { materializedDir } = materializeApiSurface({
+      cwd,
+      surface: CURRENT,
+      sourceGeneratedDir: gen,
+    });
+    expect(materializedDir).toBe(".defold-types/defold-1.12.4");
+
+    // Resolve `@defold-typescript/types` like an install: the import then hits
+    // the package copy while ambient globals come from the materialized surface
+    // — the exact mix that minted two distinct branded `Hash` copies (bug-11).
+    mkdirSync(path.join(cwd, "node_modules", "@defold-typescript"), { recursive: true });
+    symlinkSync(pkgRoot, path.join(cwd, "node_modules", "@defold-typescript", "types"));
+
+    writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      `${JSON.stringify(
+        {
+          compilerOptions: {
+            strict: true,
+            module: "ESNext",
+            moduleResolution: "bundler",
+            lib: ["ES2022"],
+            skipLibCheck: true,
+            noEmit: true,
+            typeRoots: [".defold-types"],
+            types: ["defold-1.12.4"],
+          },
+          include: ["proof.ts"],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    writeFileSync(
+      path.join(cwd, "proof.ts"),
+      [
+        'import type { Hash } from "@defold-typescript/types";',
+        'const obstacle: Hash = hash("obstacle");',
+        "function handle(message_id: Hash): void {",
+        '  if (message_id === hash("contact_point_response")) void obstacle;',
+        "}",
+        "void handle;",
+        "",
+      ].join("\n"),
+    );
+
+    const { exitCode, output } = typecheck(path.join(cwd, "tsconfig.json"));
+    if (exitCode !== 0) {
+      throw new Error(
+        `bug-11: imported Hash and ambient hash() must unify, but tsc failed:\n${output}`,
+      );
+    }
+    expect(exitCode).toBe(0);
   });
 });
 
