@@ -117,3 +117,11 @@ If a pinned version cannot be generated — an unknown version, or no network on
 first use — the build does **not** fail. It reports `materializedSurface: null`,
 warns on stderr, leaves `tsconfig.json` untouched, and exits `0`; the default
 committed surface stays usable. Having Bun is enough to compile your project.
+
+## Maintainer verification
+
+The public `defold-1.9.8` example target is periodically checked with the
+advisory, network-touching `bun run ref-doc-delta` command. It verifies that the
+live Defold 1.9.8 reference docs still include `label.get_text` and still omit
+`label.set_text`. If the command fails, update the registry target or the example
+delta; do not ignore the drift.

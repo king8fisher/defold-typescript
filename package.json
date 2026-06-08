@@ -17,7 +17,8 @@
     "typecheck": "bun run --filter '*' typecheck",
     "smoke": "bun scripts/release-smoke.ts",
     "registry-smoke": "bun scripts/registry-smoke.ts",
-    "build:lldebugger": "bun scripts/build-lldebugger-zip.ts"
+    "build:lldebugger": "bun scripts/build-lldebugger-zip.ts",
+    "ref-doc-delta": "bun --cwd packages/types run ref-doc-delta"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
