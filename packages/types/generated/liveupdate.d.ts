@@ -101,7 +101,7 @@ declare global {
      * // }
      * ```
      */
-    function get_mounts(): Record<string | number, unknown>;
+    function get_mounts(): { name: string; uri: string; priority: number }[];
     /**
      * Remove a mount the resource system.
      * The remaining mounts are persisted between sessions.

@@ -151,6 +151,16 @@ function auditEntry(
           );
           continue;
         }
+        if (tableSlotCuration?.kind === "object" || tableSlotCuration?.kind === "array-object") {
+          for (const field of tableSlotCuration.fields) {
+            if (field.fields !== undefined) {
+              for (const nested of field.fields) considerTypes(nested.types);
+            } else if (field.numberList !== true) {
+              considerTypes(field.types);
+            }
+          }
+          continue;
+        }
         if (homogeneousElement !== undefined) {
           considerTypes(
             typeof homogeneousElement === "string" ? [homogeneousElement] : homogeneousElement,

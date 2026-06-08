@@ -320,25 +320,37 @@ describe("id-array slot recovery", () => {
 });
 
 describe("slot-scoped table curation recovery", () => {
-  test("collectionfactory, physics, and socket recordTables drop by exactly seven with no other category moves", () => {
+  test("collectionfactory, physics, socket, liveupdate, and tilemap recover curated slots with no unrelated moves", () => {
     const report = buildFidelityReport(MODULE_MANIFEST);
     expect(requireEntry(report, "collectionfactory").recordTables).toBe(1);
     expect(requireEntry(report, "physics").recordTables).toBe(3);
     expect(requireEntry(report, "socket").recordTables).toBe(4);
+    expect(requireEntry(report, "liveupdate").recordTables).toBe(0);
+    expect(requireEntry(report, "tilemap").recordTables).toBe(1);
     expect(
       2 -
         requireEntry(report, "collectionfactory").recordTables +
         5 -
         requireEntry(report, "physics").recordTables +
         8 -
-        requireEntry(report, "socket").recordTables,
-    ).toBe(7);
+        requireEntry(report, "socket").recordTables +
+        1 -
+        requireEntry(report, "liveupdate").recordTables +
+        2 -
+        requireEntry(report, "tilemap").recordTables,
+    ).toBe(9);
 
     const baselineMap = baseline as Record<string, FidelityEntry>;
     for (const [namespace, entry] of Object.entries(report)) {
       const base = baselineMap[namespace];
       if (!base) throw new Error(`baseline is missing namespace ${namespace}`);
-      if (namespace === "collectionfactory" || namespace === "physics" || namespace === "socket") {
+      if (
+        namespace === "collectionfactory" ||
+        namespace === "physics" ||
+        namespace === "socket" ||
+        namespace === "liveupdate" ||
+        namespace === "tilemap"
+      ) {
         expect({ ...entry, recordTables: 0 }).toEqual({ ...base, recordTables: 0 });
       } else {
         expect(entry).toEqual(base);
