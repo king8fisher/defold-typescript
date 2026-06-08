@@ -320,22 +320,25 @@ describe("id-array slot recovery", () => {
 });
 
 describe("slot-scoped table curation recovery", () => {
-  test("collectionfactory and physics recordTables drop by exactly three with no other category moves", () => {
+  test("collectionfactory, physics, and socket recordTables drop by exactly seven with no other category moves", () => {
     const report = buildFidelityReport(MODULE_MANIFEST);
     expect(requireEntry(report, "collectionfactory").recordTables).toBe(1);
     expect(requireEntry(report, "physics").recordTables).toBe(3);
+    expect(requireEntry(report, "socket").recordTables).toBe(4);
     expect(
       2 -
         requireEntry(report, "collectionfactory").recordTables +
         5 -
-        requireEntry(report, "physics").recordTables,
-    ).toBe(3);
+        requireEntry(report, "physics").recordTables +
+        8 -
+        requireEntry(report, "socket").recordTables,
+    ).toBe(7);
 
     const baselineMap = baseline as Record<string, FidelityEntry>;
     for (const [namespace, entry] of Object.entries(report)) {
       const base = baselineMap[namespace];
       if (!base) throw new Error(`baseline is missing namespace ${namespace}`);
-      if (namespace === "collectionfactory" || namespace === "physics") {
+      if (namespace === "collectionfactory" || namespace === "physics" || namespace === "socket") {
         expect({ ...entry, recordTables: 0 }).toEqual({ ...base, recordTables: 0 });
       } else {
         expect(entry).toEqual(base);

@@ -97,7 +97,7 @@ declare global {
      * @param sendt - array with sockets that are watched to see if it is OK to immediately write on them.
      * @param timeout - the maximum amount of time (in seconds) to wait for a change in status. Nil, negative or omitted timeout value allows the function to block indefinitely.
      */
-    function select(recvt: Record<string | number, unknown>, sendt: Record<string | number, unknown>, timeout?: number): LuaMultiReturn<[Record<string | number, unknown>, Record<string | number, unknown>, string | unknown]>;
+    function select(recvt: (Opaque<"client"> | Opaque<"master"> | Opaque<"unconnected">)[], sendt: (Opaque<"client"> | Opaque<"master"> | Opaque<"unconnected">)[], timeout?: number): LuaMultiReturn<[(Opaque<"client"> | Opaque<"master"> | Opaque<"unconnected">)[], (Opaque<"client"> | Opaque<"master"> | Opaque<"unconnected">)[], string | unknown]>;
     /**
      * This function drops a number of arguments and returns the remaining.
      * It is useful to avoid creation of dummy variables:

@@ -137,10 +137,16 @@ export type TableSlotCuration =
   | { kind: "mapping"; key: string; value: string }
   | { kind: "array"; element: string | readonly string[] };
 
+const SOCKET_HANDLE_TOKENS = ["client", "master", "unconnected"] as const;
+
 export const TABLE_SLOT_CURATIONS: ReadonlyMap<string, TableSlotCuration> = new Map([
   ["collectionfactory.create:return:ids", { kind: "mapping", key: "hash", value: "hash" }],
   ["physics.raycast:param:groups", { kind: "array", element: "hash" }],
   ["physics.raycast_async:param:groups", { kind: "array", element: "hash" }],
+  ["socket.select:param:recvt", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
+  ["socket.select:param:sendt", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
+  ["socket.select:return:sockets_r", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
+  ["socket.select:return:sockets_w", { kind: "array", element: SOCKET_HANDLE_TOKENS }],
 ]);
 
 /**
