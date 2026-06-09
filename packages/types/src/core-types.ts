@@ -78,6 +78,20 @@ export interface Hash {
 }
 
 declare const OpaqueBrand: unique symbol;
+/**
+ * A nominal handle to an engine value you may hold and pass back to the API but
+ * must never inspect or construct — a Defold `node`, `texture`, `render_target`,
+ * `userdata`, etc. The `Name` parameter mints a distinct, mutually-incompatible
+ * brand per kind, so TypeScript's structural typing can't silently swap a
+ * `render_target` for a `constant`, and a plain object can't stand in for either.
+ *
+ * @remarks
+ * The brand is a phantom `unique symbol` property: it exists only in the type
+ * system (erased at transpile, never present at runtime). Because the symbol is
+ * not exported, consumer code cannot fabricate an `Opaque` — the engine API is
+ * the only source. Contrast with a `LuaTable` alias, which says the opposite:
+ * "inspect freely, the shape just isn't modeled."
+ */
 export interface Opaque<Name extends string> {
   readonly [OpaqueBrand]: Name;
 }
