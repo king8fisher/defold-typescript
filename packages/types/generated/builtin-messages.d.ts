@@ -19,7 +19,7 @@ declare global {
     load: Record<string, never>;
     model_animation_done: { animation_id: Hash; playback: number };
     play_animation: { id: Hash };
-    play_sound: { delay?: number; gain?: number; play_id?: number };
+    play_sound: { delay?: number; gain?: number; play_id?: number; start_time?: number; start_frame?: number };
     proxy_loaded: Record<string, never>;
     proxy_unloaded: Record<string, never>;
     ray_cast_missed: { group: Hash; request_id: number };

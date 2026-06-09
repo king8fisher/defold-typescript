@@ -339,6 +339,18 @@
           "types": ["number"],
           "optional": true,
           "doc": "Caller-chosen id echoed back in sound_done / sound_stopped."
+        },
+        {
+          "name": "start_time",
+          "types": ["number"],
+          "optional": true,
+          "doc": "Optional start offset (seconds). Mutually exclusive with start_frame."
+        },
+        {
+          "name": "start_frame",
+          "types": ["number"],
+          "optional": true,
+          "doc": "Optional start offset (frames). If both are provided, start_frame is used."
         }
       ]
     },
