@@ -82,8 +82,11 @@ export const TS_RESERVED_NAMES = new Set([
   "extends",
 ]);
 
-// Element names whose `table` slot is a genuinely-arbitrary lua table by design
-// — the serialization/JSON passthrough functions. Their emitted
+// Element names whose `table` slot is a genuinely-arbitrary lua table by design.
+// Two kinds: the serialization/JSON passthrough functions (Defold-internal — the
+// engine round-trips an arbitrary lua value), and the platform/OS-sourced opaque
+// blobs (external — the shape is set by the host OS or invoking app, not by
+// Defold, so there is no documented field list). Their emitted
 // `Record<string | number, unknown>` is the faithful "any lua table" type, not a
 // `recordTables` fidelity loss, so the audit consults this set to avoid counting
 // them. A new ref-doc function with an opaque table must be added here
@@ -95,6 +98,9 @@ export const ARBITRARY_TABLE_SLOTS = new Set([
   "sys.load",
   "sys.serialize",
   "sys.deserialize",
+  "iac.set_listener",
+  "push.get_scheduled",
+  "push.get_all_scheduled",
 ]);
 
 // Element names whose `table` slot is a prose-only `a table mapping X to Y`

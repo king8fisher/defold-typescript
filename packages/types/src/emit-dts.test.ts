@@ -1608,10 +1608,13 @@ describe("recoverCallbackSignature", () => {
 });
 
 describe("ARBITRARY_TABLE_SLOTS", () => {
-  test("holds exactly the serialization/JSON passthrough element names", () => {
+  test("holds exactly the serialization/JSON passthrough plus platform-opaque element names", () => {
     expect([...ARBITRARY_TABLE_SLOTS].sort()).toEqual([
+      "iac.set_listener",
       "json.decode",
       "json.encode",
+      "push.get_all_scheduled",
+      "push.get_scheduled",
       "sys.deserialize",
       "sys.load",
       "sys.save",
