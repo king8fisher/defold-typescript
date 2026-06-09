@@ -92,12 +92,19 @@ function git(args: string[]): string {
 // The platformer is a curated, paths-based consumer: `tsconfig.json` resolves
 // `@defold-typescript/*` to the working-tree source, and the example commits no
 // `package.json`/`biome.json`/`src/main.ts`. A blanket `init --force` clobbers
-// the tsconfig and scaffolds those files, so the refresh restores the hand-kept
-// tsconfig and drops the scaffold files the example deliberately omits, keeping
-// only the legitimate managed refreshes (`.gitignore`, `mise.toml` tasks) and
-// the regenerated gitignored artifacts.
+// the tsconfig and the `mise.toml` tasks and scaffolds those files, so the
+// refresh restores the hand-kept `tsconfig.json` and `mise.toml` and drops the
+// scaffold files the example deliberately omits, keeping only the legitimate
+// managed refreshes (`.gitignore`) and the regenerated gitignored artifacts.
+//
+// `mise.toml` is restored, not kept as scaffolded: `init` writes
+// `bunx @defold-typescript/cli <cmd>` tasks (the published-release consumer
+// form), but this in-repo example is pinned to working-tree source and must run
+// the working-tree bin, so its committed `mise.toml` points at
+// `packages/cli/src/bin.ts` instead.
 function preserveExampleIdentity(): void {
   git(["checkout", "--", path.join(EXAMPLE_DIR, "tsconfig.json")]);
+  git(["checkout", "--", path.join(EXAMPLE_DIR, "mise.toml")]);
 
   const untracked = git(["ls-files", "--others", "--exclude-standard", "--", EXAMPLE_DIR])
     .split("\n")

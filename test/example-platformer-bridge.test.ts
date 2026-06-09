@@ -49,4 +49,10 @@ describe("platformer example bridge", () => {
     }
     expect(exitCode).toBe(0);
   }, 60_000);
+
+  test("mise.toml runs the working-tree CLI, not the published bunx form", () => {
+    const mise = readFileSync(join(exampleDir, "mise.toml"), "utf8");
+    expect(mise).toContain("../../../packages/cli/src/bin.ts");
+    expect(mise).not.toMatch(/run\s*=.*bunx/);
+  });
 });
