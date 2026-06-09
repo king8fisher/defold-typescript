@@ -376,6 +376,28 @@ describe("model AABB table curation recovery", () => {
   });
 });
 
+describe("platform-opaque passthrough reclassification", () => {
+  test("iac.recordTables drops 1 -> 0 and push.recordTables drops 4 -> 2; iap stays 3; no other namespace or category moves", () => {
+    const report = buildFidelityReport(MODULE_MANIFEST);
+    // The three OS/platform-sourced opaque-table slots (iac.set_listener,
+    // push.get_scheduled, push.get_all_scheduled) are reclassified out of
+    // recordTables: iac 1 -> 0, push 4 -> 2 (project-wide -3). iap stays a
+    // visible signal at 3 (Defold-documented option bags, not arbitrary).
+    expect(requireEntry(report, "iac").recordTables).toBe(0);
+    expect(requireEntry(report, "push").recordTables).toBe(2);
+    expect(requireEntry(report, "iap").recordTables).toBe(3);
+    // The committed baseline reflects the reclassified counts, so the full
+    // report equals it on every namespace and category — proving iac/push are
+    // the only moves.
+    const baselineMap = baseline as Record<string, FidelityEntry>;
+    for (const [namespace, entry] of Object.entries(report)) {
+      const base = baselineMap[namespace];
+      if (!base) throw new Error(`baseline is missing namespace ${namespace}`);
+      expect(entry).toEqual(base);
+    }
+  });
+});
+
 describe("slot-level array-of-object recovery", () => {
   test("sys.recordTables stays 0 and the full report equals the committed baseline", () => {
     const report = buildFidelityReport(MODULE_MANIFEST);
