@@ -95,6 +95,29 @@ describe("emitBuiltinMessages", () => {
     expect(out).toContain("demo: { h: Hash; v: Vector3; b: boolean };");
   });
 
+  test("play_sound emits all five optional offset fields", () => {
+    const catalog: MessageCatalog = {
+      entries: [
+        {
+          name: "play_sound",
+          origin: "sound",
+          description: "",
+          payload: [
+            { name: "delay", types: ["number"], optional: true, doc: "" },
+            { name: "gain", types: ["number"], optional: true, doc: "" },
+            { name: "play_id", types: ["number"], optional: true, doc: "" },
+            { name: "start_time", types: ["number"], optional: true, doc: "" },
+            { name: "start_frame", types: ["number"], optional: true, doc: "" },
+          ],
+        },
+      ],
+    };
+    const out = emitBuiltinMessages(catalog);
+    expect(out).toContain(
+      "play_sound: { delay?: number; gain?: number; play_id?: number; start_time?: number; start_frame?: number };",
+    );
+  });
+
   test("output is syntactically-valid TypeScript", () => {
     const catalog = parseMessagesDoc(TWO_ENTRY_RAW);
     const out = emitBuiltinMessages(catalog);

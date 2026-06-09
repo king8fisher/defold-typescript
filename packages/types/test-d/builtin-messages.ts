@@ -75,6 +75,16 @@ msg.post(_url, "play_sound", { gain: "loud" });
 // @ts-expect-error play_sound payload has no `volume` field
 msg.post(_url, "play_sound", { volume: 1 });
 
+msg.post(_url, "play_sound", { start_time: 0.5 });
+msg.post(_url, "play_sound", { start_frame: 3 });
+
+const _playSoundStartTime: number | undefined =
+  null as unknown as BuiltinMessages["play_sound"]["start_time"];
+void _playSoundStartTime;
+
+// @ts-expect-error start_time must be number, not string
+msg.post(_url, "play_sound", { start_time: "soon" });
+
 msg.post(_url, "set_gain", { gain: 0.5 });
 
 msg.post(_url, "stop_sound");
