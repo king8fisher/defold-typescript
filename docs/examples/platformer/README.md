@@ -3,20 +3,21 @@
 A hand-conversion of the player logic from
 [`defold/template-platformer`](https://github.com/defold/template-platformer)
 into TypeScript, consuming `@defold-typescript/*` from the **local working-tree
-source**. It exists to exercise the toolchain against real game code before a
+source**.
+
+Not a line-for-line port — the TS player uses the [`defineScript` patterns from the guide](https://github.com/king8fisher/defold-typescript/blob/main/docs/guide/getting-started.md) and diverges on movement (acceleration-based, not instant-velocity). It exists to exercise the toolchain against real game code before a
 publish, and to surface consumer-facing gaps early.
 
 This is a self-contained, openable Defold project: clone the repo, open
-`game.project` in the Defold editor, and it runs. The upstream pin lives at
-`vendor/template-platformer/` (git submodule) for diffing and re-pulling.
+`game.project` in the Defold editor, and it runs.
 
 ## Attribution
 
 The Defold project files here (`assets/`, `game/`, `input/`, `game.project`)
 are derived from [`defold/template-platformer`](https://github.com/defold/template-platformer),
 `Copyright (c) 2020 Defold`, MIT — see `LICENSE`. `src/player.ts` is our
-TypeScript conversion of the upstream `game/player.script` (preserved at
-`vendor/template-platformer/game/player.script`).
+TypeScript conversion of the upstream `game/player.script` in
+[`defold/template-platformer`](https://github.com/defold/template-platformer).
 
 ## Layout
 

@@ -75,7 +75,7 @@ export const slides: Slide[] = [
       },
       {
         kind: "paragraph",
-        text: "The assets in this deck's `player.atlas`, `level.tilesource`, and the screenshots used in the mechanics slides are derived from [`defold/template-platformer`](https://github.com/defold/template-platformer) (MIT). The upstream lives at `vendor/template-platformer/` (vendored as a submodule) and is materialized into `docs/examples/platformer/assets/`. You can copy from either source into your own project — both carry the same files.",
+        text: "The assets in this deck's `player.atlas`, `level.tilesource`, and the screenshots used in the mechanics slides come from [`defold/template-platformer`](https://github.com/defold/template-platformer) (MIT), copied into `docs/examples/platformer/assets/`. Pull a fresh copy from the upstream repo if you need them for your own project.",
       },
       {
         kind: "sidenote",

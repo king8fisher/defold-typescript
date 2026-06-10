@@ -1,3 +1,0 @@
-[submodule "vendor/template-platformer"]
-	path = vendor/template-platformer
-	url = https://github.com/defold/template-platformer.git
