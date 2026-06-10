@@ -328,7 +328,7 @@ describe("slot-scoped table curation recovery", () => {
     expect(requireEntry(report, "physics").recordTables).toBe(3);
     expect(requireEntry(report, "socket").recordTables).toBe(4);
     expect(requireEntry(report, "liveupdate").recordTables).toBe(0);
-    expect(requireEntry(report, "tilemap").recordTables).toBe(1);
+    expect(requireEntry(report, "tilemap").recordTables).toBe(0);
     expect(
       2 -
         requireEntry(report, "collectionfactory").recordTables +
@@ -340,7 +340,7 @@ describe("slot-scoped table curation recovery", () => {
         requireEntry(report, "liveupdate").recordTables +
         2 -
         requireEntry(report, "tilemap").recordTables,
-    ).toBe(9);
+    ).toBe(10);
 
     const baselineMap = baseline as Record<string, FidelityEntry>;
     for (const [namespace, entry] of Object.entries(report)) {
@@ -369,6 +369,24 @@ describe("model AABB table curation recovery", () => {
     expect(requireEntry(report, "model").recordTables).toBe(0);
     // The committed baseline reflects the recovered count, so the full report
     // equals it on every namespace and category — proving model is the only move.
+    const baselineMap = baseline as Record<string, FidelityEntry>;
+    for (const [namespace, entry] of Object.entries(report)) {
+      const base = baselineMap[namespace];
+      if (!base) throw new Error(`baseline is missing namespace ${namespace}`);
+      expect(entry).toEqual(base);
+    }
+  });
+});
+
+describe("tilemap get_tiles nested row-map recovery", () => {
+  test("tilemap.recordTables drops 1 -> 0 and no other namespace or category moves", () => {
+    const report = buildFidelityReport(MODULE_MANIFEST);
+    // Pre-recovery baseline: tilemap 1 (get_tile_info already recovered, get_tiles
+    // the residual Record). Recovering get_tiles into the nested LuaMap ratchets
+    // the namespace to 0 — the last recoverable tilemap recordTables slot.
+    expect(requireEntry(report, "tilemap").recordTables).toBe(0);
+    // The committed baseline reflects the recovered count, so the full report
+    // equals it on every namespace and category — proving tilemap is the only move.
     const baselineMap = baseline as Record<string, FidelityEntry>;
     for (const [namespace, entry] of Object.entries(report)) {
       const base = baselineMap[namespace];

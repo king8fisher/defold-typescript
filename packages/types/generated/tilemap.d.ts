@@ -109,7 +109,7 @@ declare global {
      * }
      * ```
      */
-    function get_tiles(url: string | Hash | Url, layer: string | Hash): Record<string | number, unknown>;
+    function get_tiles(url: string | Hash | Url, layer: string | Hash): LuaMap<number, LuaMap<number, number>>;
     /**
      * Replace a tile in a tile map with a new tile.
      * The coordinates of the tiles are indexed so that the "first" tile just

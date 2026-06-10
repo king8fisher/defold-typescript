@@ -1840,6 +1840,10 @@ describe("TABLE_SLOT_CURATIONS", () => {
           ],
         },
       ],
+      [
+        "tilemap.get_tiles:return:tiles",
+        { kind: "mapping", key: "number", value: { key: "number", value: "number" } },
+      ],
     ]);
     expect(MAPPING_TABLE_SLOTS.size).toBe(3);
     expect(HOMOGENEOUS_ARRAY_SLOTS.size).toBe(7);
@@ -1897,7 +1901,7 @@ describe("TABLE_SLOT_CURATIONS", () => {
     );
   });
 
-  test("tilemap.get_tile_info recovers an object while get_tiles stays deferred", () => {
+  test("tilemap.get_tile_info recovers an object and get_tiles recovers a nested row map", () => {
     const module = parseDefoldApiDoc(tilemapDoc);
     const out = emitDeclarations({
       ...module,
@@ -1910,8 +1914,18 @@ describe("TABLE_SLOT_CURATIONS", () => {
       "function get_tile_info(url: string | Hash | Url, layer: string | Hash, x: number, y: number): { index: number; h_flip: boolean; v_flip: boolean; rotate_90: boolean };",
     );
     expect(out).toContain(
-      "function get_tiles(url: string | Hash | Url, layer: string | Hash): Record<string | number, unknown>;",
+      "function get_tiles(url: string | Hash | Url, layer: string | Hash): LuaMap<number, LuaMap<number, number>>;",
     );
+  });
+
+  test("a mapping curation with a nested-mapping value emits LuaMap<K, LuaMap<K, V>>", () => {
+    const module = parseDefoldApiDoc(tilemapDoc);
+    const out = emitDeclarations({
+      ...module,
+      functions: [requireFunction(module, "tilemap.get_tiles")],
+    });
+    expect(out).toContain("LuaMap<number, LuaMap<number, number>>");
+    expect(out).not.toContain("Record<string | number, unknown>");
   });
 
   test("model AABB returns recover an object and an object-valued mapping", () => {
