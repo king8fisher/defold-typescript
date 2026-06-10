@@ -5,6 +5,7 @@ import {
   buildTableDocResolver,
   HOMOGENEOUS_ARRAY_SLOTS,
   MAPPING_TABLE_SLOTS,
+  type NestedMapping,
   parseTableFields,
   recoverCallbackSignature,
   TABLE_SLOT_CURATIONS,
@@ -133,10 +134,12 @@ function auditEntry(
         if (tableSlotCuration?.kind === "mapping") {
           // A single-token value feeds straight back; an object-valued mapping
           // (`LuaMap<K, { … }>`) feeds the key plus each curated field type, the
-          // same way the object branch does, so an unmapped token still surfaces.
+          // same way the object branch does; a nested-mapping value
+          // (`LuaMap<K, LuaMap<K, V>>`) feeds the outer key plus the inner
+          // key/value tokens — so an unmapped token in any arm still surfaces.
           if (typeof tableSlotCuration.value === "string") {
             considerTypes([tableSlotCuration.key, tableSlotCuration.value]);
-          } else {
+          } else if (Array.isArray(tableSlotCuration.value)) {
             considerTypes([tableSlotCuration.key]);
             for (const field of tableSlotCuration.value) {
               if (field.fields !== undefined) {
@@ -145,6 +148,9 @@ function auditEntry(
                 considerTypes(field.types);
               }
             }
+          } else {
+            const nested = tableSlotCuration.value as NestedMapping;
+            considerTypes([tableSlotCuration.key, nested.key, nested.value]);
           }
           continue;
         }

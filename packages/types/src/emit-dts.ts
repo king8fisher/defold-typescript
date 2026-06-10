@@ -145,8 +145,13 @@ export const HOMOGENEOUS_ARRAY_SLOTS: ReadonlyMap<string, string | readonly stri
   ["push.register", "number"],
 ]);
 
+// A `mapping` curation whose value is itself a single-level mapping, emitted
+// `LuaMap<Kouter, LuaMap<Kinner, Vinner>>` — the nested-row-map shape
+// (`tilemap.get_tiles` → `tiles[row][col]`).
+export type NestedMapping = { key: string; value: string };
+
 export type TableSlotCuration =
-  | { kind: "mapping"; key: string; value: string | readonly TableField[] }
+  | { kind: "mapping"; key: string; value: string | readonly TableField[] | NestedMapping }
   | { kind: "array"; element: string | readonly string[] }
   | { kind: "object"; fields: readonly TableField[] }
   | { kind: "array-object"; fields: readonly TableField[] };
@@ -272,6 +277,16 @@ export const TABLE_SLOT_CURATIONS: ReadonlyMap<string, TableSlotCuration> = new 
         { name: "rotate_90", types: ["boolean"] },
       ],
     },
+  ],
+  // tilemap.get_tiles returns a sparse table of rows iterated `tiles[row][col]`,
+  // the keys being tile positions offset by tilemap.get_bounds() (not a dense
+  // 0..n run). The faithful shape is the nested LuaMap idiom
+  // `LuaMap<number, LuaMap<number, number>>` — the keys are plain `number` tile
+  // positions, not a branded `Hash`, and a non-string-keyed Lua table is `LuaMap`,
+  // never a `Record` (which would imply a dense index object).
+  [
+    "tilemap.get_tiles:return:tiles",
+    { kind: "mapping", key: "number", value: { key: "number", value: "number" } },
   ],
 ]);
 
@@ -920,10 +935,15 @@ function mapSlotUnion(
       const element =
         curation?.kind === "array" ? curation.element : HOMOGENEOUS_ARRAY_SLOTS.get(elementName);
       if (mapping !== undefined) {
-        const value =
-          typeof mapping.value === "string"
-            ? mapType(mapping.value)
-            : inlineTableType(mapping.value, mapType, optionalFields);
+        let value: string;
+        if (typeof mapping.value === "string") {
+          value = mapType(mapping.value);
+        } else if (Array.isArray(mapping.value)) {
+          value = inlineTableType(mapping.value, mapType, optionalFields);
+        } else {
+          const nested = mapping.value as NestedMapping;
+          value = `LuaMap<${mapType(nested.key)}, ${mapType(nested.value)}>`;
+        }
         ts = `LuaMap<${mapType(mapping.key)}, ${value}>`;
       } else if (element !== undefined) {
         ts = arrayTypeFromTokens(element, mapType);
