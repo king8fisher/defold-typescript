@@ -1,0 +1,57 @@
+export default defineScript({
+  // Editor script properties: the key is the name (written once) and the value
+  // is the default, so its type flows onto `self`. The transpiler emits the
+  // `go.property("adj", …)` / `go.property("name", …)` registrations for us.
+  properties: {
+    adj: vmath.vector3(0, 0, 0),
+    name: hash("initial value"),
+  },
+
+  init() {
+    // This lets us handle input in this script. `init` returns the initial
+    // state; the transpiler merges it onto the engine-owned `self`.
+    msg.post(".", "acquire_input_focus");
+    return createPlayerSelf();
+  },
+
+  fixed_update(self, dt) {
+    // Apply gravity.
+    self.velocity.y = self.velocity.y + gravity * dt;
+
+    // Move player, applying the editor-tunable `adj` offset property.
+    const pos = go.get_position().add(self.velocity.mul(dt)).add(self.adj);
+    go.set_position(pos);
+
+    // Update animations based on state (ground, air, move and idle).
+    update_animations(self);
+
+    // Reset volatile state.
+    self.correction = vmath.vector3();
+    self.ground_contact = false;
+    self.wall_contact = false;
+  },
+
+  on_message(self, message_id, message) {
+    if (isMessage(message_id, message, "contact_point_response")) {
+      // `message` is now the typed contact_point_response payload — no cast.
+      // Check that the object is something we consider an obstacle.
+      if (message.other_group === group_obstacle) {
+        handle_obstacle_contact(self, message.normal, message.distance);
+      }
+    }
+  },
+
+  on_input(self, action_id, action) {
+    if (action_id === input_left) {
+      walk(self, -(action.value ?? 0));
+    } else if (action_id === input_right) {
+      walk(self, action.value ?? 0);
+    } else if (action_id === input_jump) {
+      if (action.pressed) {
+        jump(self);
+      } else if (action.released) {
+        abort_jump(self);
+      }
+    }
+  },
+});

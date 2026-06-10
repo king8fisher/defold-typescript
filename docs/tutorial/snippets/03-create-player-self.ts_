@@ -1,0 +1,15 @@
+// The script state is defined once, by `init`'s return shape. `PlayerSelf` is
+// derived from it so the standalone helpers keep a named annotation without a
+// second hand-maintained field list that could drift from `init`.
+function createPlayerSelf() {
+  return {
+    velocity: vmath.vector3(0, 0, 0),
+    facing_direction: 0,
+    correction: vmath.vector3(),
+    ground_contact: false,
+    wall_contact: false,
+    anim: undefined as Hash | undefined,
+  };
+}
+
+type PlayerSelf = ReturnType<typeof createPlayerSelf>;

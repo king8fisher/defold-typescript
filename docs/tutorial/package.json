@@ -1,0 +1,17 @@
+{
+  "name": "tutorial",
+  "module": "build.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun run build.ts",
+    "verify": "bun run verify.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "shiki": "^4.2.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

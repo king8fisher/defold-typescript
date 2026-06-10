@@ -1,0 +1,12 @@
+// Pre-hashed ids. In Defold these are hash() handles. action_id and group are
+// delivered as hashes, so every comparison is Hash vs Hash. The message_id is
+// matched with the `isMessage` type guard, which narrows the payload and lowers
+// to a `hash("...")` comparison, so no hand-rolled message-id constant is needed.
+const group_obstacle = hash("ground");
+const input_left = hash("left");
+const input_right = hash("right");
+const input_jump = hash("jump");
+const anim_walk = hash("walk");
+const anim_idle = hash("idle");
+const anim_jump = hash("jump");
+const anim_fall = hash("fall");

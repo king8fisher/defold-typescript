@@ -1,0 +1,28 @@
+function jump(self: PlayerSelf): void {
+  // Only allow jump from ground (extend with a counter for double-jumps).
+  if (self.ground_contact) {
+    self.velocity.y = jump_takeoff_speed;
+    play_animation(self, anim_jump);
+    self.ground_contact = false;
+  }
+}
+
+function abort_jump(self: PlayerSelf): void {
+  // Cut the jump short if we are still going up.
+  if (self.velocity.y > 0) {
+    self.velocity.y = self.velocity.y * 0.5;
+  }
+}
+
+function walk(self: PlayerSelf, direction: number): void {
+  // Only change facing direction if direction is other than 0.
+  if (direction !== 0) {
+    self.facing_direction = direction;
+  }
+  // Use a different velocity on ground and in air.
+  if (self.ground_contact) {
+    self.velocity.x = max_speed * direction;
+  } else {
+    self.velocity.x = max_speed * air_acceleration_factor * direction;
+  }
+}

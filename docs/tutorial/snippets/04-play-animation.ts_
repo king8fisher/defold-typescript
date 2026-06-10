@@ -1,0 +1,7 @@
+function play_animation(self: PlayerSelf, anim: Hash): void {
+  // Only play animations which are not already playing.
+  if (self.anim !== anim) {
+    sprite.play_flipbook("#sprite", anim);
+    self.anim = anim;
+  }
+}

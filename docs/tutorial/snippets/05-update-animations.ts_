@@ -1,0 +1,15 @@
+function update_animations(self: PlayerSelf): void {
+  // Make sure the player character faces the right way.
+  sprite.set_hflip("#sprite", self.facing_direction < 0);
+  if (self.ground_contact) {
+    if (self.velocity.x === 0) {
+      play_animation(self, anim_idle);
+    } else {
+      play_animation(self, anim_walk);
+    }
+  } else if (self.velocity.y > 0) {
+    play_animation(self, anim_jump);
+  } else {
+    play_animation(self, anim_fall);
+  }
+}

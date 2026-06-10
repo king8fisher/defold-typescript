@@ -1,0 +1,29 @@
+// https://defold.com/manuals/physics/#resolving-kinematic-collisions
+function handle_obstacle_contact(self: PlayerSelf, normal: Vector3, distance: number): void {
+  if (distance > 0) {
+    // Project the accumulated correction onto the penetration vector.
+    const proj = vmath.project(self.correction, normal.mul(distance));
+    if (proj < 1) {
+      // Only care for projections that do not overshoot.
+      const comp = normal.mul(distance - distance * proj);
+      go.set_position(go.get_position().add(comp));
+      self.correction = self.correction.add(comp);
+    }
+  }
+
+  // Collided with a wall — stop horizontal movement.
+  // TSTL maps TS `Math.abs` to Lua `math.abs`, so no Defold-specific shim.
+  if (Math.abs(normal.x) > 0.7) {
+    self.wall_contact = true;
+    self.velocity.x = 0;
+  }
+  // Collided with the ground — stop vertical movement.
+  if (normal.y > 0.7) {
+    self.ground_contact = true;
+    self.velocity.y = 0;
+  }
+  // Collided with the ceiling — stop vertical movement.
+  if (normal.y < -0.7) {
+    self.velocity.y = 0;
+  }
+}

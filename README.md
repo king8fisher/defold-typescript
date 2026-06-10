@@ -44,6 +44,14 @@ bun test
 
 End-user documentation lives in [docs/guide/README.md](docs/guide/README.md): getting started with `bunx @defold-typescript/cli init`/`build`/`watch`, the typed vector-math surface, and a growing catalog of TypeScript-in-Defold gotchas (starting with the unary-minus quirk on `Vector3`/`Vector4`).
 
+## Tutorial
+
+An interactive slide-style walk-through of building a platformer in TypeScript lives at [docs/tutorial/](docs/tutorial/). It mirrors the [Defold platformer tutorial](https://defold.com/tutorials/platformer/) but with Lua replaced by `defineScript`, method-based vector math, and `isMessage`-narrowed payloads. Build the deck with `bun run build` from the tutorial directory.
+
+## Example
+
+A runnable Defold project that uses the same patterns is at [docs/examples/platformer/](docs/examples/platformer/).
+
 ## License
 
 [MIT](LICENSE) — matching the ts-defold ecosystem.

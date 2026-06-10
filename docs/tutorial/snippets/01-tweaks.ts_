@@ -1,0 +1,9 @@
+// Tweakables — module-level constants, exactly as in the original .script.
+// Acceleration factor to use when air-borne.
+const air_acceleration_factor = 0.8;
+// Max speed right/left.
+const max_speed = 450;
+// Gravity pulling the player down in pixel units.
+const gravity = -1900;
+// Take-off speed when jumping in pixel units.
+const jump_takeoff_speed = 1200;
