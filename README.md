@@ -1,5 +1,8 @@
 # defold-typescript
 
+[![npm](https://img.shields.io/npm/v/@defold-typescript/cli)](https://www.npmjs.com/package/@defold-typescript/cli)
+[![CI](https://img.shields.io/github/actions/workflow/status/king8fisher/defold-typescript/ci.yml?branch=main)](https://github.com/king8fisher/defold-typescript/actions/workflows/ci.yml)
+
 TypeScript for [Defold](https://defold.com/), transpiled to Lua. A modern, agent-friendly successor to the [ts-defold](https://github.com/ts-defold) family of repositories.
 
 ## Why a new project
