@@ -56,6 +56,34 @@ export const slides: Slide[] = [
     ],
   },
   {
+    id: "setup",
+    title: "Setup",
+    elements: [
+      {
+        kind: "paragraph",
+        text: "Before we dive into the mechanics, here is the toolchain loop the rest of the deck assumes. Scaffold a project, open it in the Defold editor, then iterate with `build` / `watch` while you follow the slides — every snippet below is a slice of a real `src/player.ts` that runs end-to-end in the same flow.",
+      },
+      {
+        kind: "bullets",
+        items: [
+          "`mkdir my-game && cd my-game`",
+          "`bunx @defold-typescript/cli@latest init`",
+          "`bun install` (the `init` install reminder tells you to run it)",
+          "`bunx @defold-typescript/cli build` (one-shot transpile to Lua)",
+          "`bunx @defold-typescript/cli watch` (rebuild on save while you iterate)",
+        ],
+      },
+      {
+        kind: "paragraph",
+        text: "The assets in this deck's `player.atlas`, `level.tilesource`, and the screenshots used in the mechanics slides are derived from [`defold/template-platformer`](https://github.com/defold/template-platformer) (MIT). The upstream lives at `vendor/template-platformer/` (vendored as a submodule) and is materialized into `docs/examples/platformer/assets/`. You can copy from either source into your own project — both carry the same files.",
+      },
+      {
+        kind: "sidenote",
+        text: "This slide is a one-page on-ramp. The full toolchain loop (Defold editor install, code editor setup, debug launch) lives in [docs/guide/getting-started.md](https://github.com/king8fisher/defold-typescript/blob/main/docs/guide/getting-started.md).",
+      },
+    ],
+  },
+  {
     id: "collision-detection",
     title: "Collision Detection",
     elements: [
