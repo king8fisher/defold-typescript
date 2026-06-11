@@ -45,6 +45,41 @@ describe("renderResult", () => {
     const parsed = JSON.parse(out) as Record<string, unknown>;
     expect("scriptKind" in parsed).toBe(false);
   });
+
+  test("round-trips a resolve result with a per-extension report", () => {
+    const out = renderResult({
+      command: "resolve",
+      materializedSurface: ".defold-types/extensions",
+      extensions: [
+        {
+          url: "https://example.com/alpha.zip",
+          provenance: "download",
+          namespaces: ["alpha"],
+          scriptApiCount: 1,
+          assetOnly: false,
+        },
+      ],
+    });
+    const parsed = JSON.parse(out) as Record<string, unknown>;
+    expect(parsed.command).toBe("resolve");
+    expect(parsed.ok).toBe(true);
+    expect(parsed.materializedSurface).toBe(".defold-types/extensions");
+    expect(parsed.extensions).toEqual([
+      {
+        url: "https://example.com/alpha.zip",
+        provenance: "download",
+        namespaces: ["alpha"],
+        scriptApiCount: 1,
+        assetOnly: false,
+      },
+    ]);
+  });
+
+  test("omits extensions when undefined", () => {
+    const out = renderResult({ command: "build", written: [] });
+    const parsed = JSON.parse(out) as Record<string, unknown>;
+    expect("extensions" in parsed).toBe(false);
+  });
 });
 
 describe("renderWatchEvent", () => {
