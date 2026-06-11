@@ -39,3 +39,22 @@ void arbTableScheduledOk;
 
 // set_listener accepts an arbitrary inter-app payload table.
 iac.set_listener({ url: "app://open", extra: 1 }, 0);
+
+// Runtime-owned passthrough: the spawn-time `properties` overrides are keyed by
+// the spawned object's own script-property names, so the table is an arbitrary
+// literal accepted as-is, not a typed shape.
+const arbTableSpawned: Hash = factory.create(
+  "#factory",
+  undefined,
+  undefined,
+  { hp: 3, name: "hero" },
+  1,
+);
+const arbTableSpawnedSet: LuaMap<Hash, Hash> = collectionfactory.create(
+  "#collectionfactory",
+  undefined,
+  undefined,
+  { speed: 2 },
+);
+void arbTableSpawned;
+void arbTableSpawnedSet;

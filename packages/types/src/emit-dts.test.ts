@@ -1610,11 +1610,14 @@ describe("recoverCallbackSignature", () => {
 });
 
 describe("ARBITRARY_TABLE_SLOTS", () => {
-  test("holds exactly the serialization/JSON passthrough plus platform-opaque element names", () => {
+  test("holds the serialization/JSON passthrough, platform-opaque, plus runtime-owned passthrough element names", () => {
     expect([...ARBITRARY_TABLE_SLOTS].sort()).toEqual([
+      "collectionfactory.create",
+      "factory.create",
       "iac.set_listener",
       "json.decode",
       "json.encode",
+      "on_message",
       "push.get_all_scheduled",
       "push.get_scheduled",
       "sys.deserialize",

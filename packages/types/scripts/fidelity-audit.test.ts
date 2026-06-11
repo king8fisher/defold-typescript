@@ -269,7 +269,10 @@ describe("arbitrary-table slot reclassification", () => {
 describe("mapping-table slot recovery", () => {
   test("gui.recordTables drops 5 -> 2 and no other namespace or category moves", () => {
     const report = buildFidelityReport(MODULE_MANIFEST);
-    expect(requireEntry(report, "gui").recordTables).toBe(2);
+    // The mapping-table recovery ratchets gui 5 -> 2; the live report is
+    // cumulative, so gui reads 1 here after the later runtime-owned passthrough
+    // slice reclassifies the bare on_message receive `message` 2 -> 1.
+    expect(requireEntry(report, "gui").recordTables).toBe(1);
     const baselineMap = baseline as Record<string, FidelityEntry>;
     for (const [namespace, entry] of Object.entries(report)) {
       const base = baselineMap[namespace];
@@ -306,9 +309,10 @@ describe("id-array slot recovery", () => {
     // "table (array) of id(s)" slots (iap.list.ids, go.delete.id) into arrays
     // drops each by one — go settles at 2. The live report is cumulative, so iap
     // reads 0 here after the later transaction-table and option-bag curations
-    // ratchet it 3 -> 1 -> 0.
+    // ratchet it 3 -> 1 -> 0, and go reads 1 after the later runtime-owned
+    // passthrough slice reclassifies on_message 2 -> 1.
     expect(requireEntry(report, "iap").recordTables).toBe(0);
-    expect(requireEntry(report, "go").recordTables).toBe(2);
+    expect(requireEntry(report, "go").recordTables).toBe(1);
     // Every namespace and category equals the committed baseline (which reflects
     // the recovered counts) — proving no other recordTables count and no other
     // category moved.
@@ -324,7 +328,10 @@ describe("id-array slot recovery", () => {
 describe("slot-scoped table curation recovery", () => {
   test("collectionfactory, physics, socket, liveupdate, and tilemap recover curated slots with no unrelated moves", () => {
     const report = buildFidelityReport(MODULE_MANIFEST);
-    expect(requireEntry(report, "collectionfactory").recordTables).toBe(1);
+    // collectionfactory reads 0 here: the slot-scoped curation ratcheted it 2 -> 1,
+    // then the later runtime-owned passthrough slice reclassifies its `create`
+    // properties slot 1 -> 0.
+    expect(requireEntry(report, "collectionfactory").recordTables).toBe(0);
     expect(requireEntry(report, "physics").recordTables).toBe(3);
     expect(requireEntry(report, "socket").recordTables).toBe(4);
     expect(requireEntry(report, "liveupdate").recordTables).toBe(0);
@@ -340,7 +347,7 @@ describe("slot-scoped table curation recovery", () => {
         requireEntry(report, "liveupdate").recordTables +
         2 -
         requireEntry(report, "tilemap").recordTables,
-    ).toBe(10);
+    ).toBe(11);
 
     const baselineMap = baseline as Record<string, FidelityEntry>;
     for (const [namespace, entry] of Object.entries(report)) {
@@ -472,6 +479,32 @@ describe("push.register notifications constant-array recovery", () => {
     expect(requireEntry(report, "push").recordTables).toBe(0);
     // The committed baseline reflects the recovered count, so the full report
     // equals it on every namespace and category — proving push is the only move.
+    const baselineMap = baseline as Record<string, FidelityEntry>;
+    for (const [namespace, entry] of Object.entries(report)) {
+      const base = baselineMap[namespace];
+      if (!base) throw new Error(`baseline is missing namespace ${namespace}`);
+      expect(entry).toEqual(base);
+    }
+  });
+});
+
+describe("runtime-owned passthrough reclassification", () => {
+  test("factory/collectionfactory.recordTables -> 0, go/gui -> 1; project-wide recordTables is 22; no other move", () => {
+    const report = buildFidelityReport(MODULE_MANIFEST);
+    // factory.create / collectionfactory.create `properties` and the bare
+    // on_message go/gui receive `message` are runtime/user-owned passthrough
+    // tables; ARBITRARY_TABLE_SLOTS reclassifies them out of recordTables:
+    // factory 1 -> 0, collectionfactory 1 -> 0, go 2 -> 1, gui 2 -> 1 — the
+    // project-wide recordTables total drops 26 -> 22.
+    expect(requireEntry(report, "factory").recordTables).toBe(0);
+    expect(requireEntry(report, "collectionfactory").recordTables).toBe(0);
+    expect(requireEntry(report, "go").recordTables).toBe(1);
+    expect(requireEntry(report, "gui").recordTables).toBe(1);
+    const total = Object.values(report).reduce((sum, e) => sum + e.recordTables, 0);
+    expect(total).toBe(22);
+    // The committed baseline reflects the reclassified counts, so the full
+    // report equals it on every namespace and category — proving these four are
+    // the only moves and no other category shifted anywhere.
     const baselineMap = baseline as Record<string, FidelityEntry>;
     for (const [namespace, entry] of Object.entries(report)) {
       const base = baselineMap[namespace];
