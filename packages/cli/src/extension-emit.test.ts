@@ -1,5 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { emitExtensionDeclaration } from "./extension-emit";
+import { join } from "node:path";
+import { resolveTypesPackageRoot } from "./api-registry";
+import { emitExtensionDeclaration, emitExtensionDeclarationFromDoc } from "./extension-emit";
+
+async function parseScriptApiDoc(scriptApiYaml: string): Promise<{ info: { namespace: string } }> {
+  const root = resolveTypesPackageRoot();
+  if (root === null) throw new Error("@defold-typescript/types must resolve in the monorepo");
+  const { scriptApiToFixtureJson } = (await import(join(root, "scripts", "sync-api-docs.ts"))) as {
+    scriptApiToFixtureJson: (text: string) => string;
+  };
+  return JSON.parse(scriptApiToFixtureJson(scriptApiYaml));
+}
 
 const PRIMARY = `
 - name: myext
@@ -77,5 +88,12 @@ describe("emitExtensionDeclaration", () => {
     expect(result.contents).toContain("namespace consts {");
     expect(result.contents).not.toContain("function");
     expect(result.dropped).toEqual([]);
+  });
+
+  test("the YAML wrapper adds only the scriptApiToFixtureJson parse over the doc core", async () => {
+    const doc = await parseScriptApiDoc(PRIMARY);
+    expect(await emitExtensionDeclarationFromDoc(doc)).toEqual(
+      await emitExtensionDeclaration(PRIMARY),
+    );
   });
 });
