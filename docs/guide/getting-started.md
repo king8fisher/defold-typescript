@@ -92,16 +92,24 @@ Open `src/main.ts` and replace its body with:
 import { defineScript } from "@defold-typescript/types";
 
 export default defineScript({
-  init() {
+  properties: {
+    name: hash("player"),
+  },
+  init(self) {
+    // self is the property channel here, not the merged self the other hooks see.
     const start = vmath.vector3(0, 0, 0);
     const offset = vmath.vector3(1, 1, 0);
     const target = start.add(offset);
     print(`target: ${target.x}, ${target.y}, ${target.z}`);
+    return { target };
   },
 });
 ```
 
 `defineScript` is the one import — it wires `init` (and the other lifecycle hooks) to Defold's script table. `vmath`, `print`, and the `Vector3` shape are ambient globals, so they need no import.
+
+> [!NOTE]
+> Inside `init`, `self` is the property channel. In every other hook, `self` widens to the union of the property channel and whatever `init` returns.
 
 ## Build to Lua
 

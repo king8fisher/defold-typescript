@@ -134,10 +134,13 @@ export default defineScript({
     name: hash("initial value"),
   },
 
-  init() {
-    // This lets us handle input in this script. `init` returns the initial
-    // state; the transpiler merges it onto the engine-owned `self`.
+  init(self) {
+    // This lets us handle input in this script. `self` here is the property
+    // channel (just `name` and `adj`); in every other hook, `self` widens to
+    // include whatever `init` returns. `init` returns the initial state; the
+    // transpiler merges it onto the engine-owned `self`.
     msg.post(".", "acquire_input_focus");
+    print(`spawn: ${self.name}`);
     return createPlayerSelf();
   },
 

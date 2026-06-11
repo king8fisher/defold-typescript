@@ -70,8 +70,8 @@ export default defineScript({
     adj: vmath.vector3(0, 0, 0), // self.adj: Vector3
     name: hash("initial value"), // self.name: Hash
   },
-  init() {
-    return { velocity: vmath.vector3(0, 0, 0) };
+  init(self) {
+    return { velocity: vmath.vector3(0, 0, 0).add(self.adj) };
   },
   update(self) {
     const name: Hash = self.name;
@@ -130,11 +130,11 @@ At runtime Defold owns `self` (a userdata-backed table) and a script can populat
 
 Defold calls three per-frame hooks, all sharing the `(self, dt) => void` shape where `dt` is the time step in seconds:
 
-| Hook | When it runs |
-| ---- | ------------ |
-| `update` | every frame |
+| Hook           | When it runs                                                    |
+| -------------- | --------------------------------------------------------------- |
+| `update`       | every frame                                                     |
 | `fixed_update` | every fixed physics step (only when fixed time step is enabled) |
-| `late_update` | every frame, after `update` and animation/physics have run |
+| `late_update`  | every frame, after `update` and animation/physics have run      |
 
 ```ts
 export default defineScript({
@@ -198,10 +198,10 @@ Defold scopes two namespaces to a script kind: `gui.*` resolves only inside a `.
 
 The default `@defold-typescript/types` entrypoint aggregates *all* namespaces, so it never rejects a call the engine would allow at runtime — but it also can't catch a `gui.*` use in a plain `.script`. To get the engine's wall at compile time, pin the entrypoint matching the file's script kind in that file's `tsconfig`:
 
-| Script kind | `types` entrypoint | Namespaces |
-| ----------- | ------------------ | ---------- |
-| `.script` | `@defold-typescript/types/script` | universal only |
-| `.gui_script` | `@defold-typescript/types/gui-script` | universal + `gui` |
+| Script kind      | `types` entrypoint                       | Namespaces           |
+| ---------------- | ---------------------------------------- | -------------------- |
+| `.script`        | `@defold-typescript/types/script`        | universal only       |
+| `.gui_script`    | `@defold-typescript/types/gui-script`    | universal + `gui`    |
 | `.render_script` | `@defold-typescript/types/render-script` | universal + `render` |
 
 ```jsonc

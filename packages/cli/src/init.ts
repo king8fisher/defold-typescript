@@ -116,9 +116,11 @@ interface VscodeSnippet {
 // canonical `SCRIPT_HOOK_NAMES`). The hook list is read off these keys rather
 // than imported as a runtime value: the types package is type-only and not
 // node-ESM-runnable, so the CLI bundle must not resolve it at runtime. `init` is
-// special-cased by the body builders (it carries the return placeholder, not a
-// `self` param), so its signature entry is unused but still required for
-// exhaustiveness.
+// special-cased by the body builders: it carries the return placeholder, so
+// the `hookLines` walker skips it and writes the line itself with the typed
+// return annotation. The `HOOK_SIGNATURES.init` entry is still required for
+// the `satisfies` exhaustiveness check; the walker does not consume it, but
+// the table documents the parameter list for readers.
 const HOOK_COMMENTS = {
   init: "Initialize the component and return its state.",
   update: "Update the component every frame; `dt` is the time step.",
@@ -131,7 +133,7 @@ const HOOK_COMMENTS = {
 } satisfies Record<ScriptHookName, string>;
 
 const HOOK_SIGNATURES = {
-  init: "",
+  init: "self",
   update: "self, dt",
   fixed_update: "self, dt",
   late_update: "self, dt",
@@ -175,7 +177,7 @@ function inlineSnippetBody(factory: string, includeOnInput: boolean): string[] {
     "",
     `export default ${factory}({`,
     `  // ${HOOK_COMMENTS.init}`,
-    "  init() {",
+    "  init(self) {",
     "    return { $0 };",
     "  },",
     ...hookLines(includeOnInput, 1),
@@ -188,13 +190,13 @@ function typedSnippetBody(factory: string, includeOnInput: boolean): string[] {
     `import { ${factory} } from "@defold-typescript/types";`,
     "",
     "type Self = {",
-    "  // Your script's state goes here.",
+    "  // Your script's state type.",
     "  $1",
     "};",
     "",
     `export default ${factory}<Self>({`,
     `  // ${HOOK_COMMENTS.init}`,
-    "  init(): Self {",
+    "  init(self): Self {",
     "    return { $0 };",
     "  },",
     ...hookLines(includeOnInput, 2),

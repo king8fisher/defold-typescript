@@ -941,6 +941,45 @@ describe("runInit (.vscode script snippets)", () => {
     expect(typed("Defold render script (typed self)")).toContain("defineRenderScript<Self>");
   });
 
+  test("every snippet's init takes `self` (the property channel) so users see it is available", () => {
+    runInit({ cwd });
+    const snippets = readSnippets();
+
+    for (const key of EXPECTED_KEYS) {
+      const body = snippetOf(snippets, key).body.join("\n");
+      // Anchored on the indented `init(` opener so a comment that happens to
+      // mention `init` (e.g. the learn-more line) does not satisfy it. The
+      // typed variant adds a `: Self` return annotation between `self` and
+      // `{`, so the body matcher only pins the parameter list.
+      expect(body).toMatch(/^ {2}init\(self\)/m);
+    }
+  });
+
+  test("typed snippets annotate init's return as Self, pinning the typed return the factory checks against", () => {
+    runInit({ cwd });
+    const snippets = readSnippets();
+
+    for (const key of [
+      "Defold script (typed self)",
+      "Defold GUI script (typed self)",
+      "Defold render script (typed self)",
+    ]) {
+      const body = snippetOf(snippets, key).body.join("\n");
+      expect(body).toMatch(/^ {2}init\(self\): Self \{/m);
+    }
+
+    for (const key of [
+      "Defold script (inferred self)",
+      "Defold GUI script (inferred self)",
+      "Defold render script (inferred self)",
+    ]) {
+      const body = snippetOf(snippets, key).body.join("\n");
+      // The inferred variant lets the return type be solved from the literal,
+      // so the explicit `: Self` annotation would be a lie and must not appear.
+      expect(body).not.toMatch(/^ {2}init\(self\): /m);
+    }
+  });
+
   test("render snippets keep on_message but omit on_input", () => {
     runInit({ cwd });
     const snippets = readSnippets();
