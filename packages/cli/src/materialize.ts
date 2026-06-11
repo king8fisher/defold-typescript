@@ -15,7 +15,7 @@ import {
 } from "./api-registry";
 import type { SelectedApiSurface } from "./api-surface";
 
-const MATERIALIZED_ROOT = ".defold-types";
+export const MATERIALIZED_ROOT = ".defold-types";
 
 // The materialized surface must not mint its own copy of the branded engine
 // primitives: `Hash` & co. are `unique symbol`-branded per declaration, so a
@@ -126,7 +126,7 @@ export function materializeApiSurface(
   return { materializedDir: relDir, active: surfaceId };
 }
 
-function ensureGitignoreLine(cwd: string, line: string): void {
+export function ensureGitignoreLine(cwd: string, line: string): void {
   const gitignorePath = path.join(cwd, ".gitignore");
   if (!existsSync(gitignorePath)) {
     writeFileSync(gitignorePath, `${line}\n`);
