@@ -6,6 +6,7 @@ import * as tstl from "typescript-to-lua";
 import { lifecycleErasurePlugin } from "./lifecycle-erasure";
 import { messageDispatchLoweringPlugin } from "./message-dispatch-lowering";
 import { messageGuardLoweringPlugin } from "./message-guard-lowering";
+import { timersLoweringPlugin } from "./timers-lowering";
 import { AMBIENT_FILES, collectOutputs, type TranspileProjectResult } from "./transpile";
 
 export interface TranspileSession {
@@ -28,6 +29,7 @@ const COMPILER_OPTIONS: tstl.CompilerOptions = {
     { plugin: lifecycleErasurePlugin },
     { plugin: messageGuardLoweringPlugin },
     { plugin: messageDispatchLoweringPlugin },
+    { plugin: timersLoweringPlugin },
   ],
 };
 

@@ -10,6 +10,8 @@ import {
 import { lifecycleErasurePlugin } from "./lifecycle-erasure";
 import { messageDispatchLoweringPlugin } from "./message-dispatch-lowering";
 import { messageGuardLoweringPlugin } from "./message-guard-lowering";
+import { importsTimersModule, timersLoweringPlugin } from "./timers-lowering";
+import { TIMERS_RUNTIME } from "./timers-runtime";
 
 export interface TranspileResult {
   readonly lua: string;
@@ -39,6 +41,12 @@ export interface TranspileProjectResult {
   // `require("lualib_bundle")` only resolves in Defold if the CLI writes it to
   // the output root. Absent when no feature pulls it in.
   readonly lualib?: string;
+  // Hand-authored runtime Lua for the `@defold-typescript/types/timers`
+  // polyfills (`setTimeout`/`wait`/...). Unlike `defineScript`, the import is
+  // not erased — it lowers to `require("defold_typescript_timers")`, so the CLI
+  // must write this to the output root. Present only when a user file imports
+  // the module (pay-for-use).
+  readonly timersRuntime?: string;
 }
 
 function flattenDiagnosticMessage(
@@ -111,6 +119,10 @@ function buildAmbientFiles(): Record<string, string> {
       "src/message-dispatch.d.ts",
     ),
     "node_modules/@defold-typescript/types/src/lifecycle.ts": readAmbient("src/lifecycle.ts"),
+    // Ambient `declare module "@defold-typescript/types/timers"` so user code
+    // type-resolves the polyfill import in the virtual program; the lowering
+    // rewrites the specifier to a flat require at emit.
+    "node_modules/@defold-typescript/types/src/timers.d.ts": readAmbient("src/timers.d.ts"),
     // Mirror the consumer-facing re-exports of the real package index so a user
     // file can `import { defineScript }` and `import type { Hash, Vector3 }`.
     "node_modules/@defold-typescript/types/index.ts": [
@@ -194,9 +206,11 @@ export function collectOutputs(
   });
 
   // Advisory scan of the user TypeScript AST for the deprecated direct
-  // `go.property` call. Run here (shared by transpileProject and the watch
-  // session) so both paths report it identically.
+  // `go.property` call, plus detection of the timers polyfill import. Run here
+  // (shared by transpileProject and the watch session) so both paths report it
+  // identically.
   const scanned = new Set<string>();
+  let timersImported = false;
   for (const file of transpiledFiles) {
     for (const sourceFile of file.sourceFiles) {
       if (!userKeys.has(sourceFile.fileName) || scanned.has(sourceFile.fileName)) {
@@ -210,6 +224,9 @@ export function collectOutputs(
           category: "warning",
         });
       }
+      if (importsTimersModule(sourceFile)) {
+        timersImported = true;
+      }
     }
   }
 
@@ -218,6 +235,7 @@ export function collectOutputs(
     sourceMaps,
     diagnostics: collectedDiagnostics,
     ...(lualib !== undefined ? { lualib } : {}),
+    ...(timersImported ? { timersRuntime: TIMERS_RUNTIME } : {}),
   };
 }
 
@@ -238,6 +256,7 @@ export function transpileProject(input: TranspileProjectInput): TranspileProject
       { plugin: lifecycleErasurePlugin },
       { plugin: messageGuardLoweringPlugin },
       { plugin: messageDispatchLoweringPlugin },
+      { plugin: timersLoweringPlugin },
     ],
   });
 

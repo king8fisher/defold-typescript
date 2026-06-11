@@ -177,6 +177,50 @@ describe("transpileProject", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("lowers async/await to the coroutine-backed Promise helpers with no event loop", () => {
+    const result = transpileProject({
+      files: {
+        "main.ts": [
+          "async function rollLater(): Promise<number> {",
+          "  return 42;",
+          "}",
+          "export async function main(): Promise<void> {",
+          "  const r = await rollLater();",
+          "  print(r);",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    });
+    expect(result.diagnostics).toEqual([]);
+    const lua = result.lua["main.ts"] ?? "";
+    // async fn -> __TS__AsyncAwaiter, await -> __TS__Await (coroutine.yield under the hood)
+    expect(lua).toContain("__TS__AsyncAwaiter");
+    expect(lua).toContain("__TS__Await");
+    // the Promise/await runtime ships in the lualib bundle the build writes to the output root
+    expect(result.lualib).toBeDefined();
+    expect(result.lualib).toContain("__TS__Promise");
+  });
+
+  test("lowers a timers import to a flat require and surfaces the runtime", () => {
+    const result = transpileProject({
+      files: {
+        "main.ts": [
+          'import { setTimeout, wait } from "@defold-typescript/types/timers";',
+          "setTimeout(() => print(1), 250);",
+          "export async function later(): Promise<void> {",
+          "  await wait(0.5);",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.lua["main.ts"]).toContain('require("defold_typescript_timers")');
+    expect(result.timersRuntime).toContain("timer.delay");
+    expect(result.lua["main.ts"]).toMatchSnapshot();
+  });
+
   test("threads a version-3 source map keyed by the user path", () => {
     const result = transpileProject({ files: { "main.ts": "export const x = 1;" } });
     const raw = result.sourceMaps["main.ts"];

@@ -230,6 +230,54 @@ describe("runBuild", () => {
     expect(existsSync(path.join(cwd, "lualib_bundle.lua"))).toBe(false);
   });
 
+  test("writes the timers runtime at the output root when a source imports it", () => {
+    writeFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeFile(
+      "src/main.ts",
+      'import { setTimeout } from "@defold-typescript/types/timers";\nsetTimeout(() => print(1), 250);\n',
+    );
+
+    const result = runBuild({ cwd });
+
+    const runtimePath = path.join(cwd, "defold_typescript_timers.lua");
+    expect(existsSync(runtimePath)).toBe(true);
+    expect(readFileSync(runtimePath, "utf8")).toContain("timer.delay");
+    expect(result.written).toContain("defold_typescript_timers.lua");
+
+    const lua = readFileSync(path.join(cwd, "src/main.lua"), "utf8");
+    expect(lua).toContain('require("defold_typescript_timers")');
+  });
+
+  test("writes the timers runtime under outDir when one is configured", () => {
+    writeFile(
+      "tsconfig.json",
+      JSON.stringify(
+        { compilerOptions: { outDir: "out/lua", strict: true }, include: ["src/**/*.ts"] },
+        null,
+        2,
+      ),
+    );
+    writeFile(
+      "src/main.ts",
+      'import { setInterval } from "@defold-typescript/types/timers";\nsetInterval(() => print(1), 1000);\n',
+    );
+
+    const result = runBuild({ cwd });
+
+    expect(existsSync(path.join(cwd, "out/lua/defold_typescript_timers.lua"))).toBe(true);
+    expect(existsSync(path.join(cwd, "defold_typescript_timers.lua"))).toBe(false);
+    expect(result.written).toContain("out/lua/defold_typescript_timers.lua");
+  });
+
+  test("does not write the timers runtime when no source imports it", () => {
+    writeFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeFile("src/main.ts", MAIN_SCRIPT);
+
+    runBuild({ cwd });
+
+    expect(existsSync(path.join(cwd, "defold_typescript_timers.lua"))).toBe(false);
+  });
+
   test("aggregates diagnostics across multiple broken files", () => {
     writeFile("tsconfig.json", DEFAULT_TSCONFIG);
     writeFile("src/a.ts", 'const a: number = "bad";\n');

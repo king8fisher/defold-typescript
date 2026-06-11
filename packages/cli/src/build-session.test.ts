@@ -113,6 +113,22 @@ describe("createBuildSession", () => {
     expect(statSync(path.join(cwd, "src/b.lua")).mtimeMs).toBe(bMtimeBefore);
   });
 
+  test("buildAll writes the timers runtime when a source imports the module", () => {
+    writeIn(cwd, "tsconfig.json", DEFAULT_TSCONFIG);
+    writeIn(
+      cwd,
+      "src/main.ts",
+      'import { setTimeout } from "@defold-typescript/types/timers";\nsetTimeout(() => print(1), 250);\n',
+    );
+
+    const result = createBuildSession({ cwd }).buildAll();
+
+    const runtimePath = path.join(cwd, "defold_typescript_timers.lua");
+    expect(existsSync(runtimePath)).toBe(true);
+    expect(readFileSync(runtimePath, "utf8")).toContain("timer.delay");
+    expect(result.written).toContain("defold_typescript_timers.lua");
+  });
+
   test("applyEvents removes a deleted helper file's module outputs and drops it from later builds", () => {
     writeIn(cwd, "tsconfig.json", DEFAULT_TSCONFIG);
     writeIn(cwd, "src/a.ts", "export const a = 1;\n");

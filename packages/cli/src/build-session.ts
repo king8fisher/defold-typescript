@@ -15,6 +15,7 @@ import {
   outputRelsForSource,
   readBuildConfig,
   throwIfFailures,
+  timersModuleRel,
   toPosix,
   writeScriptFile,
 } from "./build-output";
@@ -73,6 +74,11 @@ export function createBuildSession(opts: CreateBuildSessionOptions): BuildSessio
       const bundleRel = lualibBundleRel(config);
       writeScriptFile(cwd, bundleRel, result.lualib, undefined);
       written.push(bundleRel);
+    }
+    if (result.timersRuntime !== undefined) {
+      const runtimeRel = timersModuleRel(config);
+      writeScriptFile(cwd, runtimeRel, result.timersRuntime, undefined);
+      written.push(runtimeRel);
     }
     throwIfFailures(failures);
     return { written: written.sort() };

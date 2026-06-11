@@ -9,9 +9,24 @@ import {
   detectSourceScriptKind,
   isFileIncluded,
   isTranspilerSource,
+  timersModuleRel,
   toPosix,
   writeScriptFile,
 } from "./build-output";
+
+describe("timersModuleRel", () => {
+  test("resolves to the output root when no outDir is configured", () => {
+    expect(timersModuleRel({ outDir: undefined, include: [] })).toBe(
+      "defold_typescript_timers.lua",
+    );
+  });
+
+  test("resolves under a configured outDir", () => {
+    expect(timersModuleRel({ outDir: "out/lua", include: [] })).toBe(
+      "out/lua/defold_typescript_timers.lua",
+    );
+  });
+});
 
 describe("toPosix separator injection", () => {
   test("normalizes a Windows-separator path when sep is backslash", () => {

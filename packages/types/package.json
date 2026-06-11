@@ -30,6 +30,9 @@
     "./core-types": {
       "types": "./src/core-types.ts"
     },
+    "./timers": {
+      "types": "./src/timers.d.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [
