@@ -9,6 +9,7 @@ import "../crash";
 import "../factory";
 import "../go";
 import "../graphics";
+import "../html5";
 import "../http";
 import "../iac";
 import "../iap";

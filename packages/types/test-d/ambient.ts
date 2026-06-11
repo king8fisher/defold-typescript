@@ -242,3 +242,16 @@ timer.delay("soon", false, () => {});
 
 void _timerHandle;
 void _timerCancelled;
+
+const _html5Out: string = html5.run("1 + 1");
+html5.set_interaction_listener(() => {});
+html5.set_interaction_listener();
+
+// @ts-expect-error html5.run takes a string, not a number
+html5.run(42);
+
+// @ts-expect-error html5.run returns string, not number
+const _badHtml5: number = html5.run("1 + 1");
+
+void _html5Out;
+void _badHtml5;
