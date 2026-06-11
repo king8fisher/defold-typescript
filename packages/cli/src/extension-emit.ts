@@ -46,11 +46,21 @@ async function loadEmitter(): Promise<ScriptApiToFixtureJson & RegenModule> {
   return { ...sync, ...regen };
 }
 
-export async function emitExtensionDeclaration(scriptApiYaml: string): Promise<EmittedExtension> {
-  const { scriptApiToFixtureJson, generateModuleDeclaration } = await loadEmitter();
-  const doc = JSON.parse(scriptApiToFixtureJson(scriptApiYaml)) as {
-    info: { namespace: string };
-  };
+// The four extensions Defold ships with the engine. They flow through the
+// build-time `api-targets.json` path today; the parity guard locks them to this
+// runtime emitter so there is one extension-typing path, not two. Adding a
+// built-in here is the guard's single touch-point.
+export const BUILTIN_EXTENSION_NAMESPACES = ["iac", "iap", "push", "webview"] as const;
+
+// Doc-level core shared by the YAML entrypoint and the built-in parity guard.
+// The doc is the post-`scriptApiToFixtureJson` ref-doc JSON the build path also
+// feeds, so passing a committed `fixtures/<ns>_doc.json` reproduces the
+// committed `generated/<ns>.d.ts` byte-for-byte (regen writes the same
+// `generateModuleDeclaration` output with no formatting pass).
+export async function emitExtensionDeclarationFromDoc(doc: {
+  info: { namespace: string };
+}): Promise<EmittedExtension> {
+  const { generateModuleDeclaration } = await loadEmitter();
   const namespace = doc.info.namespace;
   const { contents, dropped } = generateModuleDeclaration({
     namespace,
@@ -59,4 +69,12 @@ export async function emitExtensionDeclaration(scriptApiYaml: string): Promise<E
     importsFrom: EXTENSION_CORE_TYPES_IMPORT,
   });
   return { namespace, contents, dropped };
+}
+
+export async function emitExtensionDeclaration(scriptApiYaml: string): Promise<EmittedExtension> {
+  const { scriptApiToFixtureJson } = await loadEmitter();
+  const doc = JSON.parse(scriptApiToFixtureJson(scriptApiYaml)) as {
+    info: { namespace: string };
+  };
+  return emitExtensionDeclarationFromDoc(doc);
 }
