@@ -31,6 +31,7 @@
         },
         { "namespace": "graphics", "fixture": "graphics_doc.json", "outFile": "graphics.d.ts" },
         { "namespace": "gui", "fixture": "gui_doc.json", "outFile": "gui.d.ts" },
+        { "namespace": "html5", "fixture": "html5_doc.json", "outFile": "html5.d.ts" },
         { "namespace": "http", "fixture": "http_doc.json", "outFile": "http.d.ts" },
         { "namespace": "iac", "fixture": "iac_doc.json", "outFile": "iac.d.ts" },
         { "namespace": "iap", "fixture": "iap_doc.json", "outFile": "iap.d.ts" },

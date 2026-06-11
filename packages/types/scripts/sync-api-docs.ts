@@ -30,6 +30,7 @@ export const SYNC_MANIFEST: readonly SyncManifestEntry[] = [
   entry("go", "doc/gameobject_script.cpp_doc.json"),
   entry("graphics", "doc/src-script_graphics.cpp_doc.json"),
   entry("gui", "doc/gui_script.cpp_doc.json"),
+  entry("html5", "doc/src-script_html5_js.cpp_doc.json"),
   entry("http", "doc/scripts-script_http.cpp_doc.json"),
   entry("image", "doc/scripts-script_image.cpp_doc.json"),
   entry("json", "doc/src-script_json.cpp_doc.json"),

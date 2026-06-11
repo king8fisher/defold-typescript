@@ -79,6 +79,14 @@
     "droppedMembers": 0,
     "optionalAsRequired": 0
   },
+  "html5": {
+    "droppedElements": 0,
+    "unknownTokens": [],
+    "recordTables": 0,
+    "multiReturn": 0,
+    "droppedMembers": 0,
+    "optionalAsRequired": 0
+  },
   "http": {
     "droppedElements": 0,
     "unknownTokens": [],

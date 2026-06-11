@@ -16,6 +16,7 @@ import "./generated/go";
 import "./src/go-overloads";
 import "./generated/graphics";
 import "./generated/gui";
+import "./generated/html5";
 import "./generated/http";
 import "./generated/iac";
 import "./generated/iap";
