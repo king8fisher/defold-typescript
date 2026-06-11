@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
+  type ExtensionZip,
   extensionArchiveKey,
   extensionCacheDir,
   resolveExtensionArchive,
@@ -18,8 +19,13 @@ const noDownload = async (): Promise<Uint8Array> => {
   throw new Error("download should not be called");
 };
 
-function fakeZip(entries: string[]): { entries: () => string[] } {
-  return { entries: () => entries };
+function fakeZip(entries: string[]): ExtensionZip {
+  return {
+    entries: () => entries,
+    read: (entry) => {
+      throw new Error(`read should not be called: ${entry}`);
+    },
+  };
 }
 
 function dep(url: string, index = 0): ExtensionDependency {

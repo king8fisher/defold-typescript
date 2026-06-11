@@ -18,11 +18,13 @@ import {
 
 export type ExtensionArchiveProvenance = "cache" | "download";
 
-// The single accessor method this slice needs: the archive's entry list, fed to
-// the pure `classifyExtension`. The shared `ZipAccessor` (sync-api-docs.ts) is a
-// structural superset, so its `readZip` satisfies this without a cast.
+// The accessor methods this pipeline needs: `entries()` lists the archive (fed to
+// the pure `classifyExtension`) and `read(entry)` returns one entry's text (fed to
+// `emitExtensionDeclaration`). The shared `ZipAccessor` (sync-api-docs.ts) is a
+// structural superset of both, so its `readZip` satisfies this without a cast.
 export interface ExtensionZip {
   entries(): string[];
+  read(entry: string): string;
 }
 
 export type DownloadExtensionArchive = (url: string) => Promise<Uint8Array>;
@@ -68,7 +70,7 @@ const fetchExtensionArchive: DownloadExtensionArchive = async (url) => {
 // Default accessor: the `unzip`-backed `readZip` ships in the `@defold-typescript/types`
 // tarball (`scripts/`). Loaded by resolved path so the CLI never statically pulls
 // in its fixture-reading module side effects (mirrors `materializeRefDocSurface`).
-const defaultReadZip: ReadExtensionZip = async (zipPath) => {
+export const defaultReadZip: ReadExtensionZip = async (zipPath) => {
   const root = resolveTypesPackageRoot();
   if (root === null) {
     throw new Error("cannot locate @defold-typescript/types to open the extension archive");
