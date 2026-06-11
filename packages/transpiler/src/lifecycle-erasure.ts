@@ -155,18 +155,31 @@ function emitInitMerge(
   context: TransformationContext,
   property: ts.ObjectLiteralElementLike,
 ): Statement[] {
+  // init-self: Defold has already populated `self` with the declared property
+  // values when `init` runs, so an `init(self)` body must resolve `self` to the
+  // engine table — not a nil global. Bind the builder's parameter to the
+  // author's first non-`this:` param (which may be named anything) and pass the
+  // engine `self` at the call. A param-less `init` keeps the zero-arg builder.
+  const authorParam = fn.parameters.find(
+    (param) => !isThisParameter(param) && ts.isIdentifier(param.name),
+  );
+  const builderParams: Identifier[] =
+    authorParam === undefined
+      ? []
+      : [context.transformExpression(authorParam.name as ts.Identifier) as Identifier];
   const builder = createFunctionExpression(
     createBlock(initBuilderBody(fn, context)),
-    [],
+    builderParams,
     undefined,
     NodeFlags.Declaration,
     fn,
   );
   const builderDecl = createVariableDeclarationStatement(createIdentifier("____init"), builder);
 
+  const builderArgs = authorParam === undefined ? [] : [createIdentifier("self")];
   const stateDecl = createVariableDeclarationStatement(
     createIdentifier("____s"),
-    createCallExpression(createIdentifier("____init"), []),
+    createCallExpression(createIdentifier("____init"), builderArgs),
   );
   const mergeAssignment = createAssignmentStatement(
     createTableIndexExpression(createIdentifier("self"), createIdentifier("____k")),

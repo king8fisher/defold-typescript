@@ -120,24 +120,35 @@ export type RenderScriptHooks<TSelf, TInitState = TSelf> = Omit<
 // callbacks see (`NoInfer`-wrapped inside the hook set), and `TInitState` what
 // `init` returns. `ScriptHooks` itself stays callback-only so the
 // `SCRIPT_HOOK_NAMES` drift pin remains valid.
-export type ScriptHooksWithProperties<TProps, TSelf, TInitState> = ScriptHooks<
-  TSelf,
-  TInitState
+//
+// `init` is overridden to receive `self: NoInfer<TProps>` — Defold applies the
+// declared property values to `self` before `init` runs, so init-time setup can
+// read them. `self` is *only* the property channel (`TProps`), not the merged
+// `TSelf`: the return is still the sole `TInitState` inference site, and
+// `NoInfer<TProps>` keeps `self` from competing with `properties` as a second
+// `TProps` inference site (the non-circularity the no-`self` `init` originally
+// bought).
+export type ScriptHooksWithProperties<TProps, TSelf, TInitState> = Omit<
+  ScriptHooks<TSelf, TInitState>,
+  "init"
 > & {
+  init?(self: NoInfer<TProps>): TInitState;
   properties?: TProps;
 };
 
-export type GuiScriptHooksWithProperties<TProps, TSelf, TInitState> = GuiScriptHooks<
-  TSelf,
-  TInitState
+export type GuiScriptHooksWithProperties<TProps, TSelf, TInitState> = Omit<
+  GuiScriptHooks<TSelf, TInitState>,
+  "init"
 > & {
+  init?(self: NoInfer<TProps>): TInitState;
   properties?: TProps;
 };
 
-export type RenderScriptHooksWithProperties<TProps, TSelf, TInitState> = RenderScriptHooks<
-  TSelf,
-  TInitState
+export type RenderScriptHooksWithProperties<TProps, TSelf, TInitState> = Omit<
+  RenderScriptHooks<TSelf, TInitState>,
+  "init"
 > & {
+  init?(self: NoInfer<TProps>): TInitState;
   properties?: TProps;
 };
 
