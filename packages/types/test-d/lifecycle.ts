@@ -18,7 +18,7 @@ const _url = null as unknown as Url;
 
 type Self = { counter: number };
 
-const hooks: ScriptHooks<Self> = defineScript<Self>({
+const hooks = defineScript<Self>({
   init: () => ({ counter: 0 }),
   update(self, dt) {
     const _n: number = self.counter;
@@ -118,10 +118,7 @@ const scriptProperties = {
 type ScriptProps = ScriptProperties<typeof scriptProperties>;
 type ScriptState = { velocity: Vector3 };
 
-const propertyHooks: ScriptHooks<ScriptProps & ScriptState, ScriptState> = defineScript<
-  ScriptProps,
-  ScriptState
->({
+const propertyHooks = defineScript<ScriptProps, ScriptState>({
   init: () => ({ velocity: vmath.vector3(0, 0, 0) }),
   update(self) {
     const _speed: number = self.speed;
@@ -238,6 +235,55 @@ defineRenderScript({
   },
 });
 
+// `init(self)` reads the declared `properties` at init time: `self` is the
+// property channel (`TProps`, the values Defold applies before `init` runs),
+// while the return stays the sole init-state channel. `update` sees the merged
+// `TProps & TInitState`.
+defineScript({
+  properties: { start_anim: hash("idle"), max_hp: 100 },
+  init(self) {
+    const _startAnim: Hash = self.start_anim;
+    const _maxHp: number = self.max_hp;
+    void _startAnim;
+    void _maxHp;
+    // @ts-expect-error a field that is not a declared property is not on init's self
+    void self.missing;
+    return { hp: self.max_hp };
+  },
+  update(self) {
+    const _n: number = self.hp + self.max_hp;
+    void _n;
+  },
+});
+
+// The no-`properties` form still checks: `self` is the empty `TProps`, and the
+// existing returning-`init` inference is unchanged.
+defineScript({
+  init(self) {
+    void self;
+    return { c: 0 };
+  },
+});
+
+// `defineGuiScript` / `defineRenderScript` expose the same `init(self: TProps)`.
+defineGuiScript({
+  properties: { root: _hash },
+  init(self) {
+    const _root: Hash = self.root;
+    void _root;
+    return { frames: 0 };
+  },
+});
+
+defineRenderScript({
+  properties: { layers: 0 },
+  init(self) {
+    const _layers: number = self.layers;
+    void _layers;
+    return { frames: 0 };
+  },
+});
+
 void hooks;
 
 // No explicit type argument: `TSelf` is solved from `init`'s return alone and
@@ -258,7 +304,7 @@ void inferred;
 
 type GuiSelf = { root: Hash };
 
-const guiHooks: GuiScriptHooks<GuiSelf> = defineGuiScript<GuiSelf>({
+const guiHooks = defineGuiScript<GuiSelf>({
   init: () => ({ root: _hash }),
   on_message(self, message_id, message, sender) {
     const _self: GuiSelf = self;
@@ -306,7 +352,7 @@ void guiHooks;
 
 type RenderSelf = { tile_pred: unknown };
 
-const renderHooks: RenderScriptHooks<RenderSelf> = defineRenderScript<RenderSelf>({
+const renderHooks = defineRenderScript<RenderSelf>({
   init: () => ({ tile_pred: null }),
   update(self, dt) {
     const _self: RenderSelf = self;
@@ -364,3 +410,24 @@ defineRenderScript<Record<string, never>>({
 });
 
 void renderHooks;
+
+// The callback-only base interfaces stay no-`self`-init (the `SCRIPT_HOOK_NAMES`
+// drift pin keys on them): a hook table whose `init` takes no argument still
+// conforms. The `…WithProperties` factory output deliberately does *not* — its
+// `init(self)` reads the property channel — which is the breaking change this
+// slice introduces, so the factory results above are no longer annotated as the
+// base type.
+const baseHooks: ScriptHooks<Self> = {
+  init: () => ({ counter: 0 }),
+};
+void baseHooks;
+
+const baseGuiHooks: GuiScriptHooks<GuiSelf> = {
+  init: () => ({ root: _hash }),
+};
+void baseGuiHooks;
+
+const baseRenderHooks: RenderScriptHooks<RenderSelf> = {
+  init: () => ({ tile_pred: null }),
+};
+void baseRenderHooks;

@@ -2,7 +2,7 @@
 
 `@defold-typescript/types` exports identity helpers for Defold script tables. They keep the runtime object unchanged while giving TypeScript a typed `self` and typed lifecycle hook parameters.
 
-`init` **returns** the script's initial state — it does not receive and mutate `self`. That return is the single site TypeScript infers the `self` type (`TSelf`) from, so you write the field set once and every other hook's `self` is typed from it. No explicit type argument is needed:
+`init` **returns** the script's initial state, and that return is the single site TypeScript infers the `self` type (`TSelf`) from, so you write the field set once and every other hook's `self` is typed from it. (When you declare `properties`, `init` also *receives* a `self` holding just those property values — see [Script properties on `self`](#script-properties-on-self) — but the return is still the only state-inference site.) No explicit type argument is needed:
 
 ```ts
 import { defineScript } from "@defold-typescript/types";
@@ -83,11 +83,40 @@ export default defineScript({
 
 Property-backed fields are present on `self` before `init` runs, so they need not appear in `init`'s return. The state `init` returns is still checked on its own — an omitted state field remains a compile error, while omitted property-backed fields are correct.
 
+### Reading properties in `init`
+
+Defold applies the declared property values to `self` *before* `init` runs, so `init` can read them at spawn time. Give `init` a `self` parameter and it is typed as the property channel — exactly the declared `properties`, for reading. This is the natural home for setup that depends on a property, such as playing the initial animation without waiting a frame:
+
+```ts
+import { defineScript, type Hash } from "@defold-typescript/types";
+
+export default defineScript({
+  properties: {
+    start_anim: hash("idle"), // self.start_anim: Hash
+    max_hp: 100, // self.max_hp: number
+  },
+  init(self) {
+    // `self` here is only the property channel: start_anim and max_hp.
+    sprite.play_flipbook("#sprite", self.start_anim);
+    return { hp: self.max_hp };
+  },
+  update(self) {
+    // Outside init, `self` is the merged properties + returned state.
+    self.hp -= 1;
+    void self.max_hp;
+  },
+});
+```
+
+Inside `init`, `self` is **only** the property values — reading a field that is neither a declared property nor yet returned is a compile error. The return is still the sole state channel, and every other hook sees the merged properties-plus-state `self`.
+
+> **Breaking change.** `init` previously took no parameter. Existing scripts whose `init` ignores `self` keep compiling unchanged — the parameter is optional. Code that annotated a factory result as the bare `ScriptHooks`/`GuiScriptHooks`/`RenderScriptHooks` type must drop that annotation (or use the factory's own return type): the property-aware `init(self)` is no longer assignable to those callback-only base interfaces.
+
 Calling `go.property(...)` directly is deprecated: it still registers the property at runtime, but `self.<name>` stays untyped and the transpiler emits a build warning pointing you at the `properties` field.
 
 Hovering `defineScript`, `defineGuiScript`, or `defineRenderScript` in the editor now shows the factory's purpose, the hooks each kind accepts (render scripts omit `on_input`), and a TypeScript example.
 
-At runtime Defold owns `self` (a userdata-backed table) and a script can populate but not replace it, so the transpiler can't emit a returning `init` verbatim. It wraps the body in a builder and merges the returned table onto the engine `self`; a `nil`/stateless return merges nothing. The hooks you write stay in terms of a typed `self`.
+At runtime Defold owns `self` (a userdata-backed table) and a script can populate but not replace it, so the transpiler can't emit a returning `init` verbatim. It wraps the body in a builder and merges the returned table onto the engine `self`; a `nil`/stateless return merges nothing. When `init` takes a `self` parameter the builder receives the engine `self` (so a property read resolves to the real table), and the parameter keeps your name even if it is not literally `self`. The hooks you write stay in terms of a typed `self`.
 
 `defineScript` and `defineGuiScript` both type `on_input` as `(self, action_id, action) => boolean | void`.
 

@@ -264,6 +264,93 @@ describe("lifecycle erasure", () => {
     expect(result.lua).not.toContain("properties");
   });
 
+  test("parameterizes the init builder so the body reads properties from self", () => {
+    const source = [
+      'import { defineScript } from "@defold-typescript/types";',
+      "",
+      "defineScript({",
+      "  properties: { speed: 100 },",
+      "  init(self) {",
+      "    sprite.play_flipbook('#sprite', hash('idle'));",
+      "    return { hp: self.speed };",
+      "  },",
+      "});",
+      "",
+    ].join("\n");
+    const result = transpile(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.lua).toMatchInlineSnapshot(`
+      "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+      local ____exports = {}
+      go.property("speed", 100)
+      local function ____init(____self)
+          sprite.play_flipbook(
+              "#sprite",
+              hash("idle")
+          )
+          return {hp = ____self.speed}
+      end
+      function init(self)
+          local ____s = ____init(self)
+          if ____s ~= nil then
+              for ____k, ____v in pairs(____s) do
+                  self[____k] = ____v
+              end
+          end
+      end
+      return ____exports
+      "
+    `);
+    // Builder takes the engine self (escaped from the reserved `self`); the
+    // generated init passes it; the body reads the declared property off it.
+    expect(result.lua).toContain("local function ____init(____self)");
+    expect(result.lua).toContain("local ____s = ____init(self)");
+    expect(result.lua).toContain("____self.speed");
+    expect(result.lua).toContain('go.property("speed", 100)');
+    expect(result.lua).toContain("pairs(");
+    expect(result.lua).not.toContain("defineScript");
+    expect(result.lua).not.toContain("require(");
+  });
+
+  test("binds the init builder param to the author's name, passing engine self", () => {
+    const source = [
+      'import { defineScript } from "@defold-typescript/types";',
+      "",
+      "defineScript({",
+      "  properties: { speed: 100 },",
+      "  init(state) {",
+      "    return { x: state.speed };",
+      "  },",
+      "});",
+      "",
+    ].join("\n");
+    const result = transpile(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.lua).toMatchInlineSnapshot(`
+      "--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+      local ____exports = {}
+      go.property("speed", 100)
+      local function ____init(state)
+          return {x = state.speed}
+      end
+      function init(self)
+          local ____s = ____init(self)
+          if ____s ~= nil then
+              for ____k, ____v in pairs(____s) do
+                  self[____k] = ____v
+              end
+          end
+      end
+      return ____exports
+      "
+    `);
+    // The builder param keeps the author's identifier (`state`); the call still
+    // passes the engine `self` as the argument.
+    expect(result.lua).toContain("local function ____init(state)");
+    expect(result.lua).toContain("local ____s = ____init(self)");
+    expect(result.lua).toContain("state.speed");
+  });
+
   test("erases defineRenderScript identically", () => {
     const source = [
       'import { defineRenderScript } from "@defold-typescript/types";',
