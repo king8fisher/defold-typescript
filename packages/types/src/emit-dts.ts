@@ -101,6 +101,15 @@ export const ARBITRARY_TABLE_SLOTS = new Set([
   "iac.set_listener",
   "push.get_scheduled",
   "push.get_all_scheduled",
+  // runtime-owned passthrough: the table is filled by user code at runtime, never
+  // by Defold's API contract. factory.create/collectionfactory.create `properties`
+  // are spawn-time overrides keyed by the spawned object's own script-property
+  // names; bare `on_message`'s receive `message` is the pre-hashed, user-routed
+  // payload (mitigated for authored code by isMessage/onMessage). No static shape
+  // exists, so `Record<string | number, unknown>` is faithful, not a loss.
+  "factory.create",
+  "collectionfactory.create",
+  "on_message",
 ]);
 
 // Element names whose `table` slot is a prose-only `a table mapping X to Y`
