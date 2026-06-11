@@ -32,16 +32,16 @@ interface ControllableFactory {
   readonly factory: WatcherFactory;
   readonly opened: boolean;
   readonly closed: boolean;
-  readonly observedSrcDir: string | null;
+  readonly observedRoot: string | null;
   trigger(kind: "change" | "rename", relPath: string): void;
 }
 
 function makeFactory(): ControllableFactory {
   let onEvent: ((e: WatchEvent) => void) | null = null;
-  const state = { opened: false, closed: false, observedSrcDir: null as string | null };
-  const factory: WatcherFactory = (srcDir, cb): Watcher => {
+  const state = { opened: false, closed: false, observedRoot: null as string | null };
+  const factory: WatcherFactory = (root, cb): Watcher => {
     state.opened = true;
-    state.observedSrcDir = srcDir;
+    state.observedRoot = root;
     onEvent = cb;
     return {
       close() {
@@ -57,8 +57,8 @@ function makeFactory(): ControllableFactory {
     get closed() {
       return state.closed;
     },
-    get observedSrcDir() {
-      return state.observedSrcDir;
+    get observedRoot() {
+      return state.observedRoot;
     },
     trigger(kind, relPath) {
       if (!onEvent) throw new Error("watcher not opened");
@@ -129,7 +129,7 @@ describe("runWatch", () => {
     await handle.waitForIdle();
 
     writeProjectFile("src/main.ts", scriptSource(2));
-    factory.trigger("change", "main.ts");
+    factory.trigger("change", "src/main.ts");
     await handle.waitForIdle();
 
     expect(countMatches(out(), /wrote 1 files/g)).toBe(2);
@@ -149,10 +149,10 @@ describe("runWatch", () => {
 
     expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
 
-    factory.trigger("rename", "main.ts.script");
-    factory.trigger("change", "main.ts.script");
-    factory.trigger("rename", "main.ts.script.map");
-    factory.trigger("change", "main.ts.script.map");
+    factory.trigger("rename", "src/main.ts.script");
+    factory.trigger("change", "src/main.ts.script");
+    factory.trigger("rename", "src/main.ts.script.map");
+    factory.trigger("change", "src/main.ts.script.map");
     await handle.waitForIdle();
 
     expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
@@ -178,7 +178,7 @@ describe("runWatch", () => {
     });
     await handle.waitForIdle();
 
-    for (let i = 0; i < 5; i++) factory.trigger("change", "main.ts");
+    for (let i = 0; i < 5; i++) factory.trigger("change", "src/main.ts");
     await handle.waitForIdle();
 
     expect(countMatches(out(), /wrote 1 files/g)).toBe(2);
@@ -197,7 +197,7 @@ describe("runWatch", () => {
     await handle.waitForIdle();
 
     writeProjectFile("src/main.ts", 'const x: number = "oops";\n');
-    factory.trigger("change", "main.ts");
+    factory.trigger("change", "src/main.ts");
     await handle.waitForIdle();
 
     expect(err()).toContain("src/main.ts");
@@ -208,7 +208,7 @@ describe("runWatch", () => {
     expect(settled).toBe("pending");
 
     writeProjectFile("src/main.ts", scriptSource(3));
-    factory.trigger("change", "main.ts");
+    factory.trigger("change", "src/main.ts");
     await handle.waitForIdle();
 
     expect(countMatches(out(), /wrote 1 files/g)).toBe(2);
@@ -248,7 +248,7 @@ describe("runWatch", () => {
     // A sibling appears on disk after the initial build but never fires an event.
     writeProjectFile("src/other.ts", "export const b = 2;\n");
     writeProjectFile("src/main.ts", scriptSource(2));
-    factory.trigger("change", "main.ts");
+    factory.trigger("change", "src/main.ts");
     await handle.waitForIdle();
 
     expect(readFileSync(path.join(cwd, "src/main.ts.script"), "utf8")).toContain("2");
@@ -316,8 +316,8 @@ describe("runWatch", () => {
     await handle.waitForIdle();
 
     expect(component.opened).toBe(true);
-    expect(component.observedSrcDir).toBe(cwd);
-    expect(main.observedSrcDir).toBe(path.join(cwd, "src"));
+    expect(component.observedRoot).toBe(cwd);
+    expect(main.observedRoot).toBe(cwd);
 
     handle.stop();
     await handle.done;
@@ -351,7 +351,7 @@ describe("runWatch", () => {
     expect(syncCount).toBe(2);
 
     writeProjectFile("src/main.ts", scriptSource(2));
-    main.trigger("change", "main.ts");
+    main.trigger("change", "src/main.ts");
     await handle.waitForIdle();
     expect(syncCount).toBe(2);
 
@@ -460,8 +460,8 @@ describe("runWatch", () => {
 
     writeProjectFile("src/main.ts", scriptSource(2));
     rmSync(path.join(cwd, "src/gone.ts"));
-    factory.trigger("change", "main.ts");
-    factory.trigger("rename", "gone.ts");
+    factory.trigger("change", "src/main.ts");
+    factory.trigger("rename", "src/gone.ts");
     await handle.waitForIdle();
 
     const lines = out().trimEnd().split("\n");
@@ -485,7 +485,7 @@ describe("runWatch", () => {
     await handle.waitForIdle();
 
     writeProjectFile("src/main.ts", 'const x: number = "oops";\n');
-    factory.trigger("change", "main.ts");
+    factory.trigger("change", "src/main.ts");
     await handle.waitForIdle();
 
     const lines = out().trimEnd().split("\n");
@@ -509,11 +509,74 @@ describe("runWatch", () => {
     await handle.waitForIdle();
 
     writeProjectFile("src/main.ts", scriptSource(2));
-    factory.trigger("change", "main.ts");
+    factory.trigger("change", "src/main.ts");
     await handle.waitForIdle();
 
     expect(countMatches(out(), /wrote 1 files/g)).toBe(2);
     expect(out()).not.toContain('"event"');
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("a non-src include layout watches cwd and writes the configured source's component", async () => {
+    const tsconfig = JSON.stringify({ include: ["scripts/**/*.ts"] }, null, 2);
+    writeProjectFile("tsconfig.json", tsconfig);
+    writeProjectFile("scripts/main.ts", scriptSource(1));
+    const { stdout, stderr } = captureStreams();
+    const factory = makeFactory();
+
+    const handle = runWatch({ cwd, stdout, stderr, watcherFactory: factory.factory });
+    await handle.waitForIdle();
+
+    expect(factory.observedRoot).toBe(cwd);
+    expect(readFileSync(path.join(cwd, "scripts/main.ts.script"), "utf8").length).toBeGreaterThan(
+      0,
+    );
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("a change under a non-src include rebuilds with the unprefixed project-relative key", async () => {
+    const tsconfig = JSON.stringify({ include: ["scripts/**/*.ts"] }, null, 2);
+    writeProjectFile("tsconfig.json", tsconfig);
+    writeProjectFile("scripts/main.ts", scriptSource(1));
+    const { stdout, stderr, out } = captureStreams();
+    const factory = makeFactory();
+
+    const handle = runWatch({ cwd, stdout, stderr, json: true, watcherFactory: factory.factory });
+    await handle.waitForIdle();
+
+    writeProjectFile("scripts/main.ts", scriptSource(2));
+    factory.trigger("change", "scripts/main.ts");
+    await handle.waitForIdle();
+
+    const lines = out().trimEnd().split("\n");
+    const rebuild = JSON.parse(lines[lines.length - 1] as string) as Record<string, unknown>;
+    expect(rebuild.event).toBe("rebuild");
+    expect(rebuild.changed).toContain("scripts/main.ts");
+    expect(readFileSync(path.join(cwd, "scripts/main.ts.script"), "utf8")).toContain("2");
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("events outside the include patterns enqueue no rebuild", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr, out } = captureStreams();
+    const factory = makeFactory();
+
+    const handle = runWatch({ cwd, stdout, stderr, watcherFactory: factory.factory });
+    await handle.waitForIdle();
+    expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
+
+    factory.trigger("change", "node_modules/foo/index.ts");
+    factory.trigger("change", "test/main.test.ts");
+    await handle.waitForIdle();
+
+    expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
 
     handle.stop();
     await handle.done;

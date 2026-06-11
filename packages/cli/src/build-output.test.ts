@@ -7,6 +7,7 @@ import {
   computeScriptRel,
   detectSourceOutputKind,
   detectSourceScriptKind,
+  isFileIncluded,
   isTranspilerSource,
   toPosix,
   writeScriptFile,
@@ -40,6 +41,28 @@ describe("isTranspilerSource", () => {
   test("normalizes backslash separators before matching", () => {
     expect(isTranspilerSource("src\\game\\hero.ts")).toBe(true);
     expect(isTranspilerSource("src\\game\\hero.ts.script")).toBe(false);
+  });
+});
+
+describe("isFileIncluded", () => {
+  test("anchored base dir with ** and a single trailing segment", () => {
+    expect(isFileIncluded("src/main.ts", ["src/**/*.ts"])).toBe(true);
+    expect(isFileIncluded("src/game/hero.ts", ["src/**/*.ts"])).toBe(true);
+    expect(isFileIncluded("scripts/main.ts", ["src/**/*.ts"])).toBe(false);
+  });
+
+  test("bare **/*.ts matches any depth but only .ts", () => {
+    expect(isFileIncluded("a/b/c.ts", ["**/*.ts"])).toBe(true);
+    expect(isFileIncluded("foo.lua", ["**/*.ts"])).toBe(false);
+  });
+
+  test("single-segment * does not cross a directory boundary", () => {
+    expect(isFileIncluded("src/main.ts", ["src/*.ts"])).toBe(true);
+    expect(isFileIncluded("src/game/hero.ts", ["src/*.ts"])).toBe(false);
+  });
+
+  test("a backslash path is normalized before matching", () => {
+    expect(isFileIncluded("src\\game\\hero.ts", ["src/**/*.ts"])).toBe(true);
   });
 });
 

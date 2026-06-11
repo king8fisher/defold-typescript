@@ -1,6 +1,6 @@
 import { existsSync, watch as fsWatch } from "node:fs";
 import * as path from "node:path";
-import { isTranspilerSource, toPosix } from "./build-output";
+import { isFileIncluded, isTranspilerSource, readBuildConfig, toPosix } from "./build-output";
 import { type BuildSession, createBuildSession } from "./build-session";
 import { renderWatchEvent } from "./json-output";
 import { isComponentPath, isSkipped } from "./script-kind";
@@ -14,7 +14,7 @@ export interface Watcher {
   close(): void;
 }
 
-export type WatcherFactory = (srcDir: string, onEvent: (e: WatchEvent) => void) => Watcher;
+export type WatcherFactory = (root: string, onEvent: (e: WatchEvent) => void) => Watcher;
 
 export interface RunWatchOptions {
   readonly cwd: string;
@@ -35,8 +35,8 @@ export interface RunWatchHandle {
 
 const DEFAULT_DEBOUNCE_MS = 50;
 
-export const recursiveWatcherFactory: WatcherFactory = (srcDir, onEvent) => {
-  const w = fsWatch(srcDir, { recursive: true }, (eventType, filename) => {
+export const recursiveWatcherFactory: WatcherFactory = (root, onEvent) => {
+  const w = fsWatch(root, { recursive: true }, (eventType, filename) => {
     onEvent({
       kind: eventType === "rename" ? "rename" : "change",
       path: filename ?? "",
@@ -67,9 +67,11 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
   });
 
   let session: BuildSession;
+  let config: ReturnType<typeof readBuildConfig>;
   try {
     opts.syncSurface?.();
     session = createBuildSession({ cwd });
+    config = readBuildConfig(cwd);
     const { written } = session.buildAll();
     stdout.write(
       opts.json ? renderWatchEvent({ event: "build", written }) : formatBuildLine(written),
@@ -82,8 +84,6 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
       waitForIdle: () => Promise.resolve(),
     };
   }
-
-  const srcDir = path.join(cwd, "src");
 
   let scheduled: ReturnType<typeof setTimeout> | null = null;
   let syncScheduled: ReturnType<typeof setTimeout> | null = null;
@@ -106,9 +106,8 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
     pending.clear();
     const changed: string[] = [];
     const removed: string[] = [];
-    for (const rel of drained) {
-      const key = `src/${toPosix(rel)}`;
-      if (existsSync(path.join(srcDir, rel))) {
+    for (const key of drained) {
+      if (existsSync(path.join(cwd, key))) {
         changed.push(key);
       } else {
         removed.push(key);
@@ -136,13 +135,15 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
   function onEvent(e: WatchEvent): void {
     if (stopped) return;
     if (!e.path || !isTranspilerSource(e.path)) return;
+    const key = toPosix(e.path);
+    if (!isFileIncluded(key, config.include)) return;
     rebuildBusy = true;
-    pending.add(e.path);
+    pending.add(key);
     if (scheduled) clearTimeout(scheduled);
     scheduled = setTimeout(rebuild, debounceMs);
   }
 
-  const watcher = factory(srcDir, onEvent);
+  const watcher = factory(cwd, onEvent);
 
   function runSync(): void {
     syncScheduled = null;
