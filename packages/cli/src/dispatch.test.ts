@@ -6,6 +6,7 @@ import { Writable } from "node:stream";
 import type { DefoldIo } from "./bob-command";
 import { CURRENT_STABLE_DEFOLD_VERSION } from "./defold-version";
 import { dispatch } from "./dispatch";
+import { type ExtensionZip, extensionArchiveKey } from "./extension-archive";
 import {
   labelRefDocResolveOpts,
   multiKindRefDocResolveOpts,
@@ -186,7 +187,7 @@ describe("dispatch", () => {
     expect(code).toBe(1);
     expect(out()).toBe("");
     expect(err()).toBe(
-      "Usage: defold-typescript <init|build|watch|wall|setup-debug|defold> [path]\n",
+      "Usage: defold-typescript <init|build|watch|wall|setup-debug|resolve|defold> [path]\n",
     );
   });
 
@@ -198,7 +199,7 @@ describe("dispatch", () => {
     expect(code).toBe(1);
     expect(out()).toBe("");
     expect(err()).toBe(
-      "Usage: defold-typescript <init|build|watch|wall|setup-debug|defold> [path]\n",
+      "Usage: defold-typescript <init|build|watch|wall|setup-debug|resolve|defold> [path]\n",
     );
   });
 
@@ -1353,5 +1354,108 @@ describe("dispatch defold", () => {
 
     expect(code).toBe(1);
     expect(err()).toMatch(/resolve\|build\|bundle/);
+  });
+});
+
+describe("dispatch resolve", () => {
+  const ALPHA = `
+- name: alpha
+  type: table
+  desc: Alpha extension.
+  members:
+  - name: do_alpha
+    type: function
+    desc: does alpha
+    parameters:
+      - name: self
+        type: object
+        desc: the script self
+`;
+
+  function resolveInternals(url: string): {
+    resolveInternals: {
+      download: () => Promise<Uint8Array>;
+      readZip: (zipPath: string) => ExtensionZip;
+      cacheDir: string;
+    };
+  } {
+    const cacheDir = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-ext-cache-"));
+    const key = extensionArchiveKey(url);
+    return {
+      resolveInternals: {
+        cacheDir,
+        download: async () => new TextEncoder().encode("z"),
+        readZip: (zipPath: string) => {
+          if (path.basename(path.dirname(zipPath)) !== key) {
+            throw new Error(`no fake archive for ${zipPath}`);
+          }
+          return {
+            entries: () => ["ext/api/alpha.script_api"],
+            read: () => ALPHA,
+          };
+        },
+      },
+    };
+  }
+
+  function writeProject(body: string): void {
+    writeFileSync(path.join(cwd, "game.project"), body);
+    writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      `${JSON.stringify({ compilerOptions: { types: ["@defold-typescript/types"] } }, null, 2)}\n`,
+    );
+  }
+
+  test("resolves the declared extension and writes the materialized surface", async () => {
+    const { io } = captureStreams();
+    const url = "https://example.com/alpha.zip";
+    writeProject(`[project]\ndependencies#0 = ${url}\n`);
+
+    const code = await dispatch(["resolve", cwd], io, resolveInternals(url));
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(cwd, ".defold-types", "extensions", "alpha.d.ts"))).toBe(true);
+  });
+
+  test("--json emits one line carrying the per-extension report", async () => {
+    const { io, out } = captureStreams();
+    const url = "https://example.com/alpha.zip";
+    writeProject(`[project]\ndependencies#0 = ${url}\n`);
+
+    const code = await dispatch(["resolve", cwd, "--json"], io, resolveInternals(url));
+
+    expect(code).toBe(0);
+    const parsed = JSON.parse(out()) as {
+      command: string;
+      ok: boolean;
+      extensions: { url: string; namespaces: string[]; scriptApiCount: number }[];
+    };
+    expect(parsed.command).toBe("resolve");
+    expect(parsed.ok).toBe(true);
+    expect(parsed.extensions).toEqual([
+      {
+        url,
+        provenance: "download",
+        namespaces: ["alpha"],
+        scriptApiCount: 1,
+        assetOnly: false,
+      },
+    ] as unknown as typeof parsed.extensions);
+  });
+
+  test("a missing game.project returns 1 and, under --json, reports ok:false", async () => {
+    const { io, out } = captureStreams();
+
+    const code = await dispatch(
+      ["resolve", cwd, "--json"],
+      io,
+      resolveInternals("https://x/0.zip"),
+    );
+
+    expect(code).toBe(1);
+    const parsed = JSON.parse(out()) as { command: string; ok: boolean; error: string };
+    expect(parsed.command).toBe("resolve");
+    expect(parsed.ok).toBe(false);
+    expect(parsed.error).toBeDefined();
   });
 });

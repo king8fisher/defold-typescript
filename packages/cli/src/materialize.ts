@@ -154,17 +154,24 @@ export function ensureMaterializedReference(cwd: string, materializedDir: string
       [key: string]: unknown;
     };
     const current = tsconfig.compilerOptions ?? {};
+    // The sibling `extensions` surface (ensureExtensionTypesReference) coexists
+    // with the engine surface under one typeRoots; repointing the engine entry
+    // must carry an existing `"extensions"` types entry through, not clobber it.
+    const currentTypes = Array.isArray(current.types) ? (current.types as unknown[]) : [];
+    const desiredTypes = currentTypes.includes("extensions")
+      ? [surfaceId, "extensions"]
+      : [surfaceId];
     // Skip the write when already repointed so the file keeps its existing
     // formatting (a consumer's Biome/Prettier shape) instead of churning to
     // JSON.stringify's layout on every build.
     const alreadyRepointed =
       JSON.stringify(current.typeRoots) === JSON.stringify([MATERIALIZED_ROOT]) &&
-      JSON.stringify(current.types) === JSON.stringify([surfaceId]);
+      JSON.stringify(current.types) === JSON.stringify(desiredTypes);
     if (!alreadyRepointed) {
       tsconfig.compilerOptions = {
         ...current,
         typeRoots: [MATERIALIZED_ROOT],
-        types: [surfaceId],
+        types: desiredTypes,
       };
       writeJson(tsconfigPath, tsconfig);
     }

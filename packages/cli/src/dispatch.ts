@@ -11,6 +11,7 @@ import {
 import { runBuild } from "./build";
 import { readCliVersion } from "./cli-version";
 import { readDefoldVersionPin, resolveDefoldVersion } from "./defold-version";
+import type { DownloadExtensionArchive, ReadExtensionZip } from "./extension-archive";
 import { runInit } from "./init";
 import { installHint } from "./install-reminder";
 import { renderResult } from "./json-output";
@@ -21,6 +22,7 @@ import {
   type RefDocResolveOptions,
   resolveCurrentSurfaceGeneratedDir,
 } from "./materialize";
+import { runResolve } from "./resolve";
 import { runSetupDebug } from "./setup-debug";
 import { applyWallSelection, currentWalledDirs, eligibleWalls } from "./wall";
 import { type CheckboxPrompt, runWallInteractive } from "./wall-interactive";
@@ -47,6 +49,11 @@ export interface DispatchInternals {
   readonly refDocRegistry?: readonly RegistryTarget[];
   readonly cliVersion?: string;
   readonly defoldIo?: Partial<DefoldIo>;
+  readonly resolveInternals?: {
+    readonly download?: DownloadExtensionArchive;
+    readonly readZip?: ReadExtensionZip;
+    readonly cacheDir?: string;
+  };
   // `wall` takes its target directories as positionals (not a cwd path arg like
   // the other commands), so tests inject the project root and TTY state here.
   readonly cwd?: string;
@@ -54,7 +61,8 @@ export interface DispatchInternals {
   readonly wallCheckbox?: CheckboxPrompt;
 }
 
-const USAGE = "Usage: defold-typescript <init|build|watch|wall|setup-debug|defold> [path]\n";
+const USAGE =
+  "Usage: defold-typescript <init|build|watch|wall|setup-debug|resolve|defold> [path]\n";
 const DEFOLD_USAGE = "Usage: defold-typescript defold <resolve|build|bundle> [path]\n";
 
 function parseDefoldVersionFlag(argv: string[]): { flag: string | undefined; rest: string[] } {
@@ -475,6 +483,51 @@ export function dispatch(
         io.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
         return 1;
       }
+    })();
+  }
+
+  if (command === "resolve") {
+    const seams = internals?.resolveInternals;
+    return (async (): Promise<number> => {
+      const result = await runResolve({
+        cwd,
+        ...(seams?.cacheDir !== undefined ? { cacheDir: seams.cacheDir } : {}),
+        ...(seams?.download ? { download: seams.download } : {}),
+        ...(seams?.readZip ? { readZip: seams.readZip } : {}),
+      });
+      if (json) {
+        io.stdout.write(
+          renderResult(
+            result.ok
+              ? {
+                  command: "resolve",
+                  materializedSurface: result.materializedSurface,
+                  extensions: result.extensions,
+                }
+              : { command: "resolve", error: result.error ?? "resolve failed" },
+          ),
+        );
+      } else if (result.ok) {
+        if (result.extensions.length === 0) {
+          io.stdout.write("defold-typescript resolve: no extension dependencies declared\n");
+        } else {
+          for (const ext of result.extensions) {
+            if (ext.assetOnly) {
+              io.stdout.write(`  ${ext.url}: asset-only, skipped\n`);
+            } else {
+              io.stdout.write(
+                `  ${ext.namespaces.join(", ")} <- ${ext.url} (${ext.scriptApiCount} .script_api, ${ext.provenance})\n`,
+              );
+            }
+          }
+          if (result.materializedSurface !== null) {
+            io.stdout.write(`defold-typescript resolve: wrote ${result.materializedSurface}\n`);
+          }
+        }
+      } else {
+        io.stderr.write(`${result.error}\n`);
+      }
+      return result.ok ? 0 : 1;
     })();
   }
 

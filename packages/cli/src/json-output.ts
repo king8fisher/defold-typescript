@@ -1,4 +1,12 @@
-export type CliCommand = "init" | "build" | "setup-debug" | "defold" | "wall";
+export type CliCommand = "init" | "build" | "setup-debug" | "defold" | "wall" | "resolve";
+
+export interface ResolvedExtensionReportJson {
+  readonly url: string;
+  readonly provenance: string;
+  readonly namespaces: readonly string[];
+  readonly scriptApiCount: number;
+  readonly assetOnly: boolean;
+}
 
 export interface RenderResultInput {
   readonly command: CliCommand;
@@ -17,6 +25,7 @@ export interface RenderResultInput {
   readonly bootPath?: readonly string[];
   readonly subcommand?: string;
   readonly exitCode?: number;
+  readonly extensions?: readonly ResolvedExtensionReportJson[];
 }
 
 export function renderResult(input: RenderResultInput): string {
@@ -49,7 +58,8 @@ export function renderResult(input: RenderResultInput): string {
     "removedFrom" in input ? { ...withAdded, removedFrom: input.removedFrom } : withAdded;
   const withBoot = "bootPath" in input ? { ...withRemoved, bootPath: input.bootPath } : withRemoved;
   const withSub = "subcommand" in input ? { ...withBoot, subcommand: input.subcommand } : withBoot;
-  const payload = "exitCode" in input ? { ...withSub, exitCode: input.exitCode } : withSub;
+  const withExit = "exitCode" in input ? { ...withSub, exitCode: input.exitCode } : withSub;
+  const payload = "extensions" in input ? { ...withExit, extensions: input.extensions } : withExit;
   return `${JSON.stringify(payload)}\n`;
 }
 

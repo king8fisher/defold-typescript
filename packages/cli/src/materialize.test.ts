@@ -12,6 +12,7 @@ import {
 import * as os from "node:os";
 import * as path from "node:path";
 import type { SelectedApiSurface } from "./api-surface";
+import { ensureExtensionTypesReference } from "./extension-materialize";
 import {
   ensureMaterializedReference,
   materializeApiSurface,
@@ -263,6 +264,31 @@ describe("ensureMaterializedReference", () => {
 
     expect(readFileSync(path.join(cwd, "tsconfig.json"), "utf8")).toBe(before);
     expect(existsSync(path.join(cwd, ".gitignore"))).toBe(false);
+  });
+
+  test("preserves a sibling extensions entry when the engine surface repoints", () => {
+    writeTsconfig({ compilerOptions: { types: ["@defold-typescript/types"] } });
+
+    ensureExtensionTypesReference(cwd, ".defold-types/extensions");
+    ensureMaterializedReference(cwd, ".defold-types/defold-1.12.4");
+
+    const tsconfig = JSON.parse(readFileSync(path.join(cwd, "tsconfig.json"), "utf8")) as {
+      compilerOptions: { types: string[]; typeRoots: string[] };
+    };
+    expect(tsconfig.compilerOptions.types).toEqual(["defold-1.12.4", "extensions"]);
+    expect(tsconfig.compilerOptions.typeRoots).toEqual([".defold-types"]);
+  });
+
+  test("is idempotent once an extensions sibling is present", () => {
+    writeTsconfig({ compilerOptions: { types: ["@defold-typescript/types"] } });
+
+    ensureExtensionTypesReference(cwd, ".defold-types/extensions");
+    ensureMaterializedReference(cwd, ".defold-types/defold-1.12.4");
+    const first = readFileSync(path.join(cwd, "tsconfig.json"), "utf8");
+    ensureMaterializedReference(cwd, ".defold-types/defold-1.12.4");
+    const second = readFileSync(path.join(cwd, "tsconfig.json"), "utf8");
+
+    expect(second).toBe(first);
   });
 });
 
