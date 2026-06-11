@@ -8,6 +8,7 @@ import {
   lualibBundleRel,
   readBuildConfig,
   throwIfFailures,
+  timersModuleRel,
   toPosix,
   writeScriptFile,
 } from "./build-output";
@@ -63,6 +64,12 @@ export function runBuild(opts: RunBuildOptions): RunBuildResult {
     const bundleRel = lualibBundleRel(config);
     writeScriptFile(cwd, bundleRel, result.lualib, undefined);
     written.push(bundleRel);
+  }
+
+  if (result.timersRuntime !== undefined) {
+    const runtimeRel = timersModuleRel(config);
+    writeScriptFile(cwd, runtimeRel, result.timersRuntime, undefined);
+    written.push(runtimeRel);
   }
 
   throwIfFailures(failures);

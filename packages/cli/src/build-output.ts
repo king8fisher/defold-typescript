@@ -154,6 +154,17 @@ export function lualibBundleRel(config: BuildConfig): string {
   return path.posix.join(outDir, "lualib_bundle.lua");
 }
 
+// The timers polyfill runtime lands once at the project/output root next to
+// `lualib_bundle.lua`, so `require("defold_typescript_timers")` resolves in
+// Defold regardless of which subfolder a script lives in.
+export function timersModuleRel(config: BuildConfig): string {
+  const { outDir } = config;
+  if (outDir === undefined || outDir === "" || outDir === ".") {
+    return "defold_typescript_timers.lua";
+  }
+  return path.posix.join(outDir, "defold_typescript_timers.lua");
+}
+
 export function computeScriptRel(
   rel: string,
   config: BuildConfig,

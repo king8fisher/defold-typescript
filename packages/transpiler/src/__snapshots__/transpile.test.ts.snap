@@ -57,3 +57,24 @@ return ____exports
 ,
 }
 `;
+
+exports[`transpileProject lowers a timers import to a flat require and surfaces the runtime 1`] = `
+"local ____lualib = require("lualib_bundle")
+local __TS__AsyncAwaiter = ____lualib.__TS__AsyncAwaiter
+local __TS__Await = ____lualib.__TS__Await
+local ____exports = {}
+local _____40NoResolution_3Adefold_typescript_timers = require("defold_typescript_timers")
+local setTimeout = _____40NoResolution_3Adefold_typescript_timers.setTimeout
+local wait = _____40NoResolution_3Adefold_typescript_timers.wait
+setTimeout(
+    function() return print(1) end,
+    250
+)
+function ____exports.later()
+    return __TS__AsyncAwaiter(function(____awaiter_resolve)
+        __TS__Await(wait(0.5))
+    end)
+end
+return ____exports
+"
+`;
