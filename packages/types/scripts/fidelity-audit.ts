@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { DEFOLD_TYPE_MAP } from "../src/core-types";
 import {
   ARBITRARY_TABLE_SLOTS,
+  applyNestedFieldCurations,
   buildTableDocResolver,
   HOMOGENEOUS_ARRAY_SLOTS,
   MAPPING_TABLE_SLOTS,
@@ -117,6 +118,7 @@ function auditEntry(
     mappingSlot?: { key: string; value: string },
     homogeneousElement?: string | readonly string[],
     tableSlotCuration?: TableSlotCuration,
+    slot?: { element: string; kind: "param" | "return"; name: string },
   ) => {
     for (const token of types) {
       // A `table` slot whose doc carries a parseable `<dl>` field list is
@@ -143,7 +145,10 @@ function auditEntry(
             considerTypes([tableSlotCuration.key]);
             for (const field of tableSlotCuration.value) {
               if (field.fields !== undefined) {
-                for (const nested of field.fields) considerTypes(nested.types);
+                for (const nested of field.fields) {
+                  if (nested.numberList === true) continue;
+                  considerTypes(nested.types);
+                }
               } else if (field.numberList !== true) {
                 considerTypes(field.types);
               }
@@ -174,7 +179,10 @@ function auditEntry(
         if (tableSlotCuration?.kind === "object" || tableSlotCuration?.kind === "array-object") {
           for (const field of tableSlotCuration.fields) {
             if (field.fields !== undefined) {
-              for (const nested of field.fields) considerTypes(nested.types);
+              for (const nested of field.fields) {
+                if (nested.numberList === true) continue;
+                considerTypes(nested.types);
+              }
             } else if (field.numberList !== true) {
               considerTypes(field.types);
             }
@@ -187,14 +195,23 @@ function auditEntry(
           );
           continue;
         }
-        const fields = doc !== undefined ? parseTableFields(doc, resolver) : null;
+        const parsed = doc !== undefined ? parseTableFields(doc, resolver) : null;
+        const fields =
+          parsed !== null && slot !== undefined
+            ? applyNestedFieldCurations(slot.element, slot.kind, slot.name, parsed)
+            : parsed;
         if (fields !== null) {
           // A recovered field carrying nested fields (the mixed `<dl>`+`<ul>`
-          // shape) emits a nested object, not a `Record` — recurse into the
-          // nested field types instead of counting the nested `table`.
+          // shape, or an injected nested-field curation) emits a nested object,
+          // not a `Record` — recurse into the nested field types instead of
+          // counting the nested `table`. A nested number-list member is recovered
+          // as `number[]`, so skip it the same way the top-level branch does.
           for (const field of fields) {
             if (field.fields !== undefined) {
-              for (const nested of field.fields) considerTypes(nested.types);
+              for (const nested of field.fields) {
+                if (nested.numberList === true) continue;
+                considerTypes(nested.types);
+              }
             } else if (field.numberList === true) {
               // Recovered as `number[]` by inlineTableType — no longer a
               // `Record`, so skip it. Re-counting its `table` token here would
@@ -292,6 +309,9 @@ function auditEntry(
         mappingSlot,
         homogeneousElement,
         tableSlotCuration,
+        typeof element.name === "string" && typeof param.name === "string"
+          ? { element: element.name, kind: "param", name: param.name }
+          : undefined,
       );
       // Residual: a doc-optional param the emitter cannot mark `?` because a
       // required param follows it. The trailing-run cutoff must match
@@ -310,6 +330,9 @@ function auditEntry(
         mappingSlot,
         homogeneousElement,
         tableSlotCuration,
+        typeof element.name === "string" && typeof ret.name === "string"
+          ? { element: element.name, kind: "return", name: ret.name }
+          : undefined,
       );
     }
   }

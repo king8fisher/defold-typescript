@@ -313,6 +313,29 @@ export const TABLE_SLOT_CURATIONS: ReadonlyMap<string, TableSlotCuration> = new 
   ],
 ]);
 
+// resource.set_atlas's `table` param and resource.get_atlas's `data` return are
+// flattened `<li><dl>` field lists whose `geometries` header is followed by the
+// `table`-typed siblings `vertices`/`uvs`/`indices` — the grouping heuristic
+// stops at the next `table` header, so `geometries` is left memberless and
+// collapses to `Record`. The doc markup carries no signal that those number-list
+// fields nest *under* `geometries` rather than beside it, so the nesting is
+// hand-curated. Each geometry is the triangle data (the create-input form
+// get_atlas mirrors via its cross-ref), and `vertices`/`uvs`/`indices` are
+// brace-form number-lists, hence `numberList: true` (emitted `number[]`).
+// Injected onto the already-parsed field list (every sibling stays
+// parser-authoritative), so this is a nested-field curation, not a whole-slot
+// object curation.
+const ATLAS_GEOMETRY_MEMBERS: readonly TableField[] = [
+  { name: "vertices", types: ["table"], numberList: true },
+  { name: "uvs", types: ["table"], numberList: true },
+  { name: "indices", types: ["table"], numberList: true },
+];
+
+export const NESTED_FIELD_CURATIONS: ReadonlyMap<string, readonly TableField[]> = new Map([
+  ["resource.set_atlas:param:table:geometries", ATLAS_GEOMETRY_MEMBERS],
+  ["resource.get_atlas:return:data:geometries", ATLAS_GEOMETRY_MEMBERS],
+]);
+
 /**
  * Recover a Defold `function(...)` callback-signature token into a TypeScript
  * function type. The token carries parameter names but no inner types, so each
@@ -974,8 +997,9 @@ function mapSlotUnion(
         const object = inlineTableType(curation.fields, mapType, optionalFields);
         ts = curation.kind === "array-object" ? `${object}[]` : object;
       } else {
-        const fields = parseTableFields(doc, resolver);
-        if (fields !== null) {
+        const parsed = parseTableFields(doc, resolver);
+        if (parsed !== null) {
+          const fields = applyNestedFieldCurations(elementName, slotKind, slotName, parsed);
           const object = inlineTableType(fields, mapType, optionalFields);
           ts = isSlotLevelList(doc) ? `${object}[]` : object;
         } else {
@@ -994,6 +1018,36 @@ function mapSlotUnion(
 
 function tableSlotKey(elementName: string, slotKind: "param" | "return", slotName: string): string {
   return `${elementName}:${slotKind}:${slotName}`;
+}
+
+function nestedFieldKey(
+  elementName: string,
+  slotKind: "param" | "return",
+  slotName: string,
+  fieldName: string,
+): string {
+  return `${tableSlotKey(elementName, slotKind, slotName)}:${fieldName}`;
+}
+
+// Inject the curated nested members of NESTED_FIELD_CURATIONS onto the matching
+// top-level field of an otherwise parser-recovered slot, leaving every sibling
+// parser-authoritative. A field the parser already gave nested fields is left
+// alone (parser won). Returns a new array; never mutates the parser's result.
+export function applyNestedFieldCurations(
+  elementName: string,
+  slotKind: "param" | "return" | undefined,
+  slotName: string | undefined,
+  fields: readonly TableField[],
+): TableField[] {
+  if (slotKind === undefined || slotName === undefined) return [...fields];
+  return fields.map((field) => {
+    if (field.fields !== undefined) return field;
+    const curated = NESTED_FIELD_CURATIONS.get(
+      nestedFieldKey(elementName, slotKind, slotName, field.name),
+    );
+    if (curated === undefined) return field;
+    return { ...field, fields: [...curated], isList: true };
+  });
 }
 
 function arrayTypeFromTokens(
