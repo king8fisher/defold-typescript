@@ -68,6 +68,9 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
 
   let session: BuildSession;
   let config: ReturnType<typeof readBuildConfig>;
+  if (opts.json) {
+    stdout.write(renderWatchEvent({ event: "start" }));
+  }
   try {
     opts.syncSurface?.();
     session = createBuildSession({ cwd });
@@ -182,6 +185,9 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
     }
     watcher.close();
     componentWatcher?.close();
+    if (opts.json) {
+      stdout.write(renderWatchEvent({ event: "stop" }));
+    }
     rebuildBusy = false;
     syncBusy = false;
     notifyIdle();

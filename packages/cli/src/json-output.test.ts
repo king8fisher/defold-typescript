@@ -117,4 +117,29 @@ describe("renderWatchEvent", () => {
     expect(out.endsWith("\n")).toBe(true);
     expect(out.trimEnd()).not.toContain("\n");
   });
+
+  test("serializes a start event as the uniform ok-shape with an empty written array", () => {
+    const out = renderWatchEvent({ event: "start" });
+    const parsed = JSON.parse(out) as Record<string, unknown>;
+    expect(parsed).toEqual({ command: "watch", event: "start", ok: true, written: [] });
+    expect("changed" in parsed).toBe(false);
+    expect("removed" in parsed).toBe(false);
+    expect("error" in parsed).toBe(false);
+  });
+
+  test("serializes a stop event as the uniform ok-shape with an empty written array", () => {
+    const out = renderWatchEvent({ event: "stop" });
+    const parsed = JSON.parse(out) as Record<string, unknown>;
+    expect(parsed).toEqual({ command: "watch", event: "stop", ok: true, written: [] });
+    expect("changed" in parsed).toBe(false);
+    expect("removed" in parsed).toBe(false);
+    expect("error" in parsed).toBe(false);
+  });
+
+  test("start and stop events are a single line terminated by exactly one newline", () => {
+    expect(renderWatchEvent({ event: "start" }).endsWith("\n")).toBe(true);
+    expect(renderWatchEvent({ event: "start" }).trimEnd()).not.toContain("\n");
+    expect(renderWatchEvent({ event: "stop" }).endsWith("\n")).toBe(true);
+    expect(renderWatchEvent({ event: "stop" }).trimEnd()).not.toContain("\n");
+  });
 });

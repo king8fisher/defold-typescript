@@ -63,7 +63,7 @@ export function renderResult(input: RenderResultInput): string {
   return `${JSON.stringify(payload)}\n`;
 }
 
-export type WatchEventName = "build" | "rebuild";
+export type WatchEventName = "build" | "rebuild" | "start" | "stop";
 
 export interface RenderWatchEventInput {
   readonly event: WatchEventName;
