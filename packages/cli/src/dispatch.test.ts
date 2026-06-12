@@ -816,7 +816,9 @@ describe("dispatch", () => {
 
     expect(err()).toBe("");
     const lines = out().trimEnd().split("\n");
-    const build = JSON.parse(lines[0] as string) as Record<string, unknown>;
+    const start = JSON.parse(lines[0] as string) as Record<string, unknown>;
+    expect(start).toEqual({ command: "watch", event: "start", ok: true, written: [] });
+    const build = JSON.parse(lines[1] as string) as Record<string, unknown>;
     expect(build.command).toBe("watch");
     expect(build.event).toBe("build");
     expect(build.ok).toBe(true);

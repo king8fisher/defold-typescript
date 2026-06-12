@@ -427,7 +427,7 @@ describe("runWatch", () => {
     await handle.done;
   });
 
-  test("json mode emits a single build NDJSON line at startup and no human line", async () => {
+  test("json mode emits a start line then a build NDJSON line at startup and no human line", async () => {
     writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
     writeProjectFile("src/main.ts", scriptSource(1));
     const { stdout, stderr, out } = captureStreams();
@@ -437,15 +437,55 @@ describe("runWatch", () => {
     await handle.waitForIdle();
 
     const lines = out().trimEnd().split("\n");
-    expect(lines.length).toBe(1);
-    const parsed = JSON.parse(lines[0] as string) as Record<string, unknown>;
-    expect(parsed.command).toBe("watch");
-    expect(parsed.event).toBe("build");
-    expect(parsed.ok).toBe(true);
+    expect(lines.length).toBe(2);
+    const start = JSON.parse(lines[0] as string) as Record<string, unknown>;
+    expect(start).toEqual({ command: "watch", event: "start", ok: true, written: [] });
+    const build = JSON.parse(lines[1] as string) as Record<string, unknown>;
+    expect(build.command).toBe("watch");
+    expect(build.event).toBe("build");
+    expect(build.ok).toBe(true);
     expect(out()).not.toMatch(/wrote \d+ files/);
 
     handle.stop();
     await handle.done;
+  });
+
+  test("json mode calls to stop() append a stop NDJSON line as the last line and resolve done with 0", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr, out } = captureStreams();
+    const factory = makeFactory();
+
+    const handle = runWatch({ cwd, stdout, stderr, json: true, watcherFactory: factory.factory });
+    await handle.waitForIdle();
+
+    handle.stop();
+    const code = await handle.done;
+    expect(code).toBe(0);
+
+    const lines = out().trimEnd().split("\n");
+    expect(lines.length).toBe(3);
+    const stop = JSON.parse(lines[lines.length - 1] as string) as Record<string, unknown>;
+    expect(stop).toEqual({ command: "watch", event: "stop", ok: true, written: [] });
+  });
+
+  test("without json, startup and stop() produce no extra lines beyond the human formatBuildLine output", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr, out } = captureStreams();
+    const factory = makeFactory();
+
+    const handle = runWatch({ cwd, stdout, stderr, watcherFactory: factory.factory });
+    await handle.waitForIdle();
+
+    expect(out()).toMatch(/wrote 1 files/);
+    const beforeStop = out();
+
+    handle.stop();
+    await handle.done;
+
+    expect(out()).toBe(beforeStop);
+    expect(out()).not.toContain('"event"');
   });
 
   test("json mode emits a rebuild event carrying changed and removed src keys", async () => {

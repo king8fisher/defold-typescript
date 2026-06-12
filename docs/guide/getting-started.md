@@ -149,18 +149,22 @@ A failure flips `ok` to `false` and carries an `error` string instead of
 …) appear only when they apply.
 
 `watch` is long-running, so `--json` streams **newline-delimited JSON (NDJSON)** —
-one object per line, one line per build:
+one object per line, one line per event. The full lifecycle reads
+`start` → `build` → `rebuild`* → `stop`:
 
 ```sh
 bunx @defold-typescript/cli watch --json
+# {"command":"watch","event":"start","ok":true,"written":[]}
 # {"command":"watch","event":"build","ok":true,"written":[...]}
 # {"command":"watch","event":"rebuild","ok":true,"written":[...],"changed":["src/main.ts"],"removed":[]}
 # {"command":"watch","event":"rebuild","ok":false,"error":"..."}
+# {"command":"watch","event":"stop","ok":true,"written":[]}
 ```
 
-The first line is the startup full build (`event: "build"`); each later line is
-an incremental `rebuild` carrying the `changed` and `removed` `src/<rel>` keys.
-A rebuild that fails emits an `ok: false` line **to stdout too**, so a
+`start` arrives once, before the initial full build — the process is up and
+listening. `stop` arrives once on graceful shutdown. A failed startup (missing
+`tsconfig.json`, etc.) emits `start` then exits non-zero with **no** `stop`
+line; a rebuild that fails emits an `ok: false` line **to stdout too**, so a
 line-reader sees one uninterrupted stream — failures never split off to stderr.
 Read each line as it arrives and react per event. Without `--json`, stdout stays
 the human `wrote N files: …` output and rebuild errors stay on stderr.
