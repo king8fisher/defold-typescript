@@ -220,6 +220,24 @@ instead of packing local tarballs, it `bun add` / `npm install`s
 bin through `init` (both modes) → `build` → `tsc --noEmit`. Like `smoke`, it is
 network-touching and manual, never a CI gate.
 
+## Example smoke (maintainers)
+
+A second pre-publish gate exercises the working-tree library against the
+platformer example (the consumer end of the toolchain):
+
+```sh
+bun run example-smoke      # or: mise run example:smoke
+```
+
+It re-runs the local-source CLI (`init --force` then `build`) against
+`docs/examples/platformer` and follows that with `tsc --noEmit` against the
+example's `tsconfig.json`, so a library change that breaks the example's
+type-check surface ships detected. `bun run typecheck` is
+`bun run --filter '*' typecheck` and only covers workspace packages, so the
+example's `paths`-based resolution is invisible to it. Like `smoke`, this is
+advisory and manual — it mutates the committed example artifacts via the same
+convert path as `mise run example:update`.
+
 ## Next
 
 - Read [vector math](./vector-math.md) for the arithmetic methods on `Vector3`, `Vector4`, `Quaternion`, and `Matrix4`.
