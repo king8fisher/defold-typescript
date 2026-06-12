@@ -5,6 +5,10 @@ import * as path from "node:path";
 
 const TYPES_PKG = path.resolve(import.meta.dir, "..");
 
+// Each case spawns a full `tsc` type-check (60s inner cap below); the default
+// 5s per-test timeout flakes on slower runners (Windows). Sit above the inner cap.
+const TYPECHECK_TEST_TIMEOUT_MS = 120_000;
+
 function linkTypes(cwd: string): void {
   const scope = path.join(cwd, "node_modules", "@defold-typescript");
   mkdirSync(scope, { recursive: true });
@@ -57,63 +61,75 @@ describe("kind subpath factory import is leak-free", () => {
     return cwd;
   }
 
-  test("gui-script subpath: factory call + gui.* type-check", () => {
-    const dir = makeCwd();
-    try {
-      scaffold(
-        dir,
-        [
-          'import { defineGuiScript } from "@defold-typescript/types/gui-script";',
-          "export default defineGuiScript({",
-          "  init() {",
-          '    gui.get_node("x");',
-          "  },",
-          "});",
-        ].join("\n"),
-      );
-      const { exitCode, output } = typecheck(dir);
-      if (exitCode !== 0) throw new Error(`expected clean type-check, got:\n${output}`);
-      expect(exitCode).toBe(0);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
+  test(
+    "gui-script subpath: factory call + gui.* type-check",
+    () => {
+      const dir = makeCwd();
+      try {
+        scaffold(
+          dir,
+          [
+            'import { defineGuiScript } from "@defold-typescript/types/gui-script";',
+            "export default defineGuiScript({",
+            "  init() {",
+            '    gui.get_node("x");',
+            "  },",
+            "});",
+          ].join("\n"),
+        );
+        const { exitCode, output } = typecheck(dir);
+        if (exitCode !== 0) throw new Error(`expected clean type-check, got:\n${output}`);
+        expect(exitCode).toBe(0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    TYPECHECK_TEST_TIMEOUT_MS,
+  );
 
-  test("gui-script subpath: render.* reference fails (restricted namespace not leaked)", () => {
-    const dir = makeCwd();
-    try {
-      scaffold(
-        dir,
-        [
-          'import { defineGuiScript } from "@defold-typescript/types/gui-script";',
-          "export default defineGuiScript({",
-          "  init() {",
-          "    render.clear({});",
-          "  },",
-          "});",
-        ].join("\n"),
-      );
-      const { exitCode } = typecheck(dir);
-      expect(exitCode).not.toBe(0);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
+  test(
+    "gui-script subpath: render.* reference fails (restricted namespace not leaked)",
+    () => {
+      const dir = makeCwd();
+      try {
+        scaffold(
+          dir,
+          [
+            'import { defineGuiScript } from "@defold-typescript/types/gui-script";',
+            "export default defineGuiScript({",
+            "  init() {",
+            "    render.clear({});",
+            "  },",
+            "});",
+          ].join("\n"),
+        );
+        const { exitCode } = typecheck(dir);
+        expect(exitCode).not.toBe(0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    TYPECHECK_TEST_TIMEOUT_MS,
+  );
 
-  test("gui-script subpath: importing defineRenderScript fails (non-matching factory not re-exported)", () => {
-    const dir = makeCwd();
-    try {
-      scaffold(
-        dir,
-        [
-          'import { defineRenderScript } from "@defold-typescript/types/gui-script";',
-          "export default defineRenderScript({});",
-        ].join("\n"),
-      );
-      const { exitCode } = typecheck(dir);
-      expect(exitCode).not.toBe(0);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
+  test(
+    "gui-script subpath: importing defineRenderScript fails (non-matching factory not re-exported)",
+    () => {
+      const dir = makeCwd();
+      try {
+        scaffold(
+          dir,
+          [
+            'import { defineRenderScript } from "@defold-typescript/types/gui-script";',
+            "export default defineRenderScript({});",
+          ].join("\n"),
+        );
+        const { exitCode } = typecheck(dir);
+        expect(exitCode).not.toBe(0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    TYPECHECK_TEST_TIMEOUT_MS,
+  );
 });
