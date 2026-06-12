@@ -16,11 +16,13 @@ import vmathDoc from "../fixtures/vmath_doc.json" with { type: "json" };
 import { type ApiFunction, type ApiModule, parseDefoldApiDoc } from "./api-doc";
 import {
   ARBITRARY_TABLE_SLOTS,
+  applyNestedFieldCurations,
   buildTableDocResolver,
   emitDeclarations,
   HOMOGENEOUS_ARRAY_SLOTS,
   inlineTableType,
   MAPPING_TABLE_SLOTS,
+  NESTED_FIELD_CURATIONS,
   parseTableFields,
   recoverCallbackSignature,
   SLOT_LEVEL_LIST_PROSE,
@@ -848,7 +850,7 @@ describe("emitDeclarations", () => {
     expect(createAtlasLine?.match(/ height\?:/g)).toHaveLength(2);
   });
 
-  test("emits 'a list of' atlas table fields as arrays while opaque list fields stay Record", () => {
+  test("emits 'a list of' atlas table fields as arrays while geometries recovers a nested array", () => {
     const module = parseDefoldApiDoc(resourceDoc);
     const out = emitDeclarations(module);
     const createLine = out.split("\n").find((l) => l.includes("function create_atlas")) ?? "";
@@ -856,10 +858,16 @@ describe("emitDeclarations", () => {
     expect(createLine).toContain("rotated?: boolean }[]");
     const getLine = out.split("\n").find((l) => l.includes("function get_atlas(")) ?? "";
     expect(getLine).toContain("flip_horizontal: boolean }[]");
-    expect(getLine).toContain("geometries: Record<string | number, unknown>");
+    expect(getLine).toContain(
+      "geometries: { vertices: number[]; uvs: number[]; indices: number[] }[]",
+    );
+    expect(getLine).not.toContain("geometries: Record");
     const setLine = out.split("\n").find((l) => l.includes("function set_atlas(")) ?? "";
     expect(setLine).toContain("flip_horizontal?: boolean }[]");
-    expect(setLine).toContain("geometries?: Record<string | number, unknown>");
+    expect(setLine).toContain(
+      "geometries?: { vertices?: number[]; uvs?: number[]; indices?: number[] }[]",
+    );
+    expect(setLine).not.toContain("geometries?: Record");
   });
 
   test("a reserved-name function emits an internal _name plus an export alias", () => {
@@ -1495,7 +1503,7 @@ describe("number-list table-field recovery", () => {
     expect(out).not.toContain("number[]");
   });
 
-  test("emits create_atlas/set_atlas number-lists as number[] while geometries stays Record", () => {
+  test("emits create_atlas/set_atlas top-level number-lists as number[] alongside the recovered geometries array", () => {
     const module = parseDefoldApiDoc(resourceDoc);
     const out = emitDeclarations(module);
     const createLine = out.split("\n").find((l) => l.includes("function create_atlas")) ?? "";
@@ -1503,12 +1511,17 @@ describe("number-list table-field recovery", () => {
     expect(createLine).toContain("uvs?: number[]");
     expect(createLine).toContain("indices?: number[]");
     const setLine = out.split("\n").find((l) => l.includes("function set_atlas(")) ?? "";
-    expect(setLine).toContain("vertices?: number[]");
-    expect(setLine).toContain("uvs?: number[]");
-    expect(setLine).toContain("indices?: number[]");
-    expect(setLine).toContain("geometries?: Record<string | number, unknown>");
+    // The top-level vertices/uvs/indices number-lists stay byte-identical; only
+    // the curated geometries field flips from Record to the nested array.
+    expect(setLine).toContain(
+      "geometries?: { vertices?: number[]; uvs?: number[]; indices?: number[] }[]; vertices?: number[]; uvs?: number[]; indices?: number[] }",
+    );
+    expect(setLine).not.toContain("geometries?: Record");
     const getLine = out.split("\n").find((l) => l.includes("function get_atlas(")) ?? "";
-    expect(getLine).toContain("geometries: Record<string | number, unknown>");
+    expect(getLine).toContain(
+      "geometries: { vertices: number[]; uvs: number[]; indices: number[] }[]",
+    );
+    expect(getLine).not.toContain("geometries: Record");
   });
 });
 
@@ -1606,13 +1619,12 @@ describe("supplementary cross-reference table-field recovery", () => {
     expect(parseTableFields(docA, resolver)).toBeNull();
   });
 
-  test("emits get_atlas's return as the inline object adopted from set_atlas, not Record", () => {
+  test("emits get_atlas's return as the inline object adopted from set_atlas, with the curated geometries array", () => {
     const out = emitDeclarations(resourceModule);
     const line = out.split("\n").find((l) => l.includes("function get_atlas(")) ?? "";
     expect(line).toContain(
-      'function get_atlas(path: Hash | string): { texture: string | Hash; animations: { id: string; width: number; height: number; frame_start: number; frame_end: number; playback: Opaque<"constant">; fps: number; flip_vertical: boolean; flip_horizontal: boolean }[]; geometries: Record<string | number, unknown> };',
+      'function get_atlas(path: Hash | string): { texture: string | Hash; animations: { id: string; width: number; height: number; frame_start: number; frame_end: number; playback: Opaque<"constant">; fps: number; flip_vertical: boolean; flip_horizontal: boolean }[]; geometries: { vertices: number[]; uvs: number[]; indices: number[] }[] };',
     );
-    expect(line).not.toContain("vertices");
   });
 });
 
@@ -2008,6 +2020,74 @@ describe("TABLE_SLOT_CURATIONS", () => {
       "notification_settings: { action?: string; badge_count?: number; priority?: number }",
     );
     expect(out).toContain("notifications: number[]");
+  });
+});
+
+describe("NESTED_FIELD_CURATIONS", () => {
+  test("holds exactly the two atlas geometries entries, both the same member list", () => {
+    const members = [
+      { name: "vertices", types: ["table"], numberList: true },
+      { name: "uvs", types: ["table"], numberList: true },
+      { name: "indices", types: ["table"], numberList: true },
+    ];
+    expect([...NESTED_FIELD_CURATIONS]).toEqual([
+      ["resource.set_atlas:param:table:geometries", members],
+      ["resource.get_atlas:return:data:geometries", members],
+    ]);
+  });
+
+  test("injects the curated members onto the named field of an otherwise parser-recovered slot", () => {
+    const parsed = [
+      { name: "texture", types: ["string"] },
+      { name: "geometries", types: ["table"] },
+    ];
+    const out = applyNestedFieldCurations("resource.set_atlas", "param", "table", parsed);
+    expect(out[0]).toEqual({ name: "texture", types: ["string"] });
+    expect(out[1]).toEqual({
+      name: "geometries",
+      types: ["table"],
+      isList: true,
+      fields: [
+        { name: "vertices", types: ["table"], numberList: true },
+        { name: "uvs", types: ["table"], numberList: true },
+        { name: "indices", types: ["table"], numberList: true },
+      ],
+    });
+    // A new array is returned; the parser's input is never mutated.
+    expect(parsed[1]).toEqual({ name: "geometries", types: ["table"] });
+  });
+
+  test("leaves a parser-recovered nested field alone (parser won)", () => {
+    const parsed = [
+      { name: "geometries", types: ["table"], fields: [{ name: "id", types: ["string"] }] },
+    ];
+    const out = applyNestedFieldCurations("resource.set_atlas", "param", "table", parsed);
+    expect(out[0]).toBe(parsed[0]);
+  });
+
+  test("does nothing for an unkeyed slot", () => {
+    const parsed = [{ name: "geometries", types: ["table"] }];
+    expect(applyNestedFieldCurations("resource.create_atlas", "param", "table", parsed)).toEqual(
+      parsed,
+    );
+  });
+
+  test("drives the injection through emitDeclarations onto set_atlas/get_atlas only", () => {
+    const module = parseDefoldApiDoc(resourceDoc);
+    const out = emitDeclarations(module);
+    const setLine = out.split("\n").find((l) => l.includes("function set_atlas(")) ?? "";
+    const getLine = out.split("\n").find((l) => l.includes("function get_atlas(")) ?? "";
+    expect(setLine).toContain(
+      "geometries?: { vertices?: number[]; uvs?: number[]; indices?: number[] }[]",
+    );
+    expect(getLine).toContain(
+      "geometries: { vertices: number[]; uvs: number[]; indices: number[] }[]",
+    );
+    // create_atlas is not curated — its parser-grouped geometries shape is untouched.
+    const createLine = out.split("\n").find((l) => l.includes("function create_atlas")) ?? "";
+    expect(createLine).toContain(
+      "geometries?: { id?: string; width?: number; height?: number; pivot_x?: number; pivot_y?: number; rotated?: boolean }[]",
+    );
   });
 });
 

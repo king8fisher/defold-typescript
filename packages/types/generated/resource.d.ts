@@ -626,7 +626,7 @@ declare global {
      * `geometries`, preserving the frame-to-geometry mapping used by the atlas.
      * See resource.set_atlas for a detailed description of each field
      */
-    function get_atlas(path: Hash | string): { texture: string | Hash; animations: { id: string; width: number; height: number; frame_start: number; frame_end: number; playback: Opaque<"constant">; fps: number; flip_vertical: boolean; flip_horizontal: boolean }[]; geometries: Record<string | number, unknown> };
+    function get_atlas(path: Hash | string): { texture: string | Hash; animations: { id: string; width: number; height: number; frame_start: number; frame_end: number; playback: Opaque<"constant">; fps: number; flip_vertical: boolean; flip_horizontal: boolean }[]; geometries: { vertices: number[]; uvs: number[]; indices: number[] }[] };
     /**
      * gets the buffer from a resource
      *
@@ -1007,7 +1007,7 @@ declare global {
      * });
      * ```
      */
-    function set_atlas(path: Hash | string, table: { texture?: string | Hash; animations?: { id?: string; width?: number; height?: number; frame_start?: number; frame_end?: number; playback?: Opaque<"constant">; fps?: number; flip_vertical?: boolean; flip_horizontal?: boolean }[]; geometries?: Record<string | number, unknown>; vertices?: number[]; uvs?: number[]; indices?: number[] }): void;
+    function set_atlas(path: Hash | string, table: { texture?: string | Hash; animations?: { id?: string; width?: number; height?: number; frame_start?: number; frame_end?: number; playback?: Opaque<"constant">; fps?: number; flip_vertical?: boolean; flip_horizontal?: boolean }[]; geometries?: { vertices?: number[]; uvs?: number[]; indices?: number[] }[]; vertices?: number[]; uvs?: number[]; indices?: number[] }): void;
     /**
      * Sets the buffer of a resource. By default, setting the resource buffer will either copy the data from the incoming buffer object
      * to the buffer stored in the destination resource, or make a new buffer object if the sizes between the source buffer and the destination buffer
