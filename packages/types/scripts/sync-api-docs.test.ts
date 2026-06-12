@@ -236,10 +236,19 @@ describe("syncFixtures --check", () => {
   });
 });
 
+function hasExecutable(command: string[]): boolean {
+  // Bun.spawnSync throws "Executable not found in $PATH" when the binary is
+  // absent (e.g. no `zip` on Windows runners) rather than returning a non-zero
+  // exitCode, so a missing tool must be caught, not read off the result.
+  try {
+    return Bun.spawnSync(command).exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
 function zipToolsAvailable(): boolean {
-  return (
-    Bun.spawnSync(["zip", "-h"]).exitCode === 0 && Bun.spawnSync(["unzip", "-v"]).exitCode === 0
-  );
+  return hasExecutable(["zip", "-h"]) && hasExecutable(["unzip", "-v"]);
 }
 
 describe("readZip entries", () => {
