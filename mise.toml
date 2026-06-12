@@ -33,9 +33,9 @@ run = "bun run ref-doc-delta"
 description = "Coordinated local npm publish (tags v<version> on success). Usage: mise run publish [<version>|patch|minor|major] [--publish] (dry-run without --publish)"
 run = "bun scripts/publish.ts"
 
-[tasks.release]
-description = "Fallback: manually tag a version already published by `mise run publish`. Usage: mise run release <version>"
-run = "bun scripts/release.ts"
+[tasks.push-tag]
+description = "Fallback: manually tag a version already published by `mise run publish`. Usage: mise run push-tag <version>"
+run = "bun scripts/push-tag.ts"
 
 [tasks."example:build"]
 description = "Compile the platformer example (docs/examples/platformer) once with the local working-tree CLI"

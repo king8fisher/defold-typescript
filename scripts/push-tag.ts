@@ -1,11 +1,12 @@
 // Tag and push a release commit after it has been published to npm.
 //
-// Publishing is local (`mise run publish <version> --publish`); release.yml is
-// parked, so there is no CI publish. This task only creates and pushes the git
-// tag for a version already on npm.
+// Publishing happens either locally (`mise run publish <version> --publish`) or
+// via the tag-triggered `release.yml` (gated behind `ENABLE_NPM_PUBLISH`). This
+// task does NOT publish — it only creates and pushes the git tag for a version
+// already on npm.
 //
 // Usage:
-//   bun scripts/release.ts <version>
+//   bun scripts/push-tag.ts <version>
 
 import { spawnSync } from "node:child_process";
 import * as path from "node:path";
@@ -16,13 +17,13 @@ const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
 export const HELP = `Manually tag and push a release that is already on npm.
 
 Usage:
-  mise run release <version>
-  bun scripts/release.ts <version>
+  mise run push-tag <version>
+  bun scripts/push-tag.ts <version>
 
 This is a fallback: \`mise run publish <version> --publish\` already tags and
 pushes v<version> on success. Use this only to re-tag a version that published
 but whose tag did not land (e.g. the push failed). It creates and pushes the
-git tag; it does NOT publish. (release.yml is parked — publishing is local.)
+git tag; it does NOT publish.
 
 Arguments:
   <version>   the x.y.z version already published, no leading v (e.g. 0.2.0)
@@ -31,7 +32,7 @@ Flags:
   -h, --help  show this help
 
 Examples:
-  mise run release 0.2.0              # tag v0.2.0 and push it`;
+  mise run push-tag 0.2.0             # tag v0.2.0 and push it`;
 
 export interface Args {
   readonly version: string | null;
@@ -101,7 +102,7 @@ function main(): void {
     fail(`could not push tag ${tag}`);
   }
   process.stdout.write(
-    `Pushed ${tag}. (release.yml is parked; npm publish is local via mise run publish.)\n`,
+    `Pushed ${tag}. (npm publish is via mise run publish, or the tag-triggered release.yml.)\n`,
   );
 }
 

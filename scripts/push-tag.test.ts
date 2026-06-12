@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isVersion, parseArgs } from "./release.ts";
+import { isVersion, parseArgs } from "./push-tag.ts";
 
 describe("parseArgs", () => {
   test("reads a single version argument", () => {

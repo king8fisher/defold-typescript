@@ -76,7 +76,7 @@ Examples:
   mise run publish minor --publish    # publish 0.2.0 and push tag v0.2.0
   mise run publish 0.3.0 --publish    # publish an explicit version
   mise run current-version            # show what is live on npm now
-  mise run release 0.2.0              # fallback: tag a version published earlier`;
+  mise run push-tag 0.2.0             # fallback: tag a version published earlier`;
 
 export function parseArgs(argv: readonly string[]): Args {
   const positional: string[] = [];
@@ -276,12 +276,12 @@ function restoreTree(): void {
 
 // Tag the release after a fully-successful real publish. Non-fatal: the
 // packages are already on npm, so a tag/push hiccup must not read as a failed
-// publish — it just leaves the manual `mise run release <version>` fallback.
+// publish — it just leaves the manual `mise run push-tag <version>` fallback.
 function tagRelease(version: string): void {
   const tag = `v${version}`;
   if (run(["git", "tag", "-a", tag, "-m", `Release ${tag}`], { inherit: true }).code !== 0) {
     process.stderr.write(
-      `\nwarning: could not create tag ${tag} (already exists?). Tag manually: mise run release ${version}\n`,
+      `\nwarning: could not create tag ${tag} (already exists?). Tag manually: mise run push-tag ${version}\n`,
     );
     return;
   }
