@@ -622,3 +622,213 @@ describe("runWatch", () => {
     await handle.done;
   });
 });
+
+describe("runWatch resolve surface", () => {
+  test("a game.project change invokes resolveSurface exactly once after the debounce window", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr } = captureStreams();
+    const factory = makeFactory();
+    let resolveCalls = 0;
+
+    const handle = runWatch({
+      cwd,
+      stdout,
+      stderr,
+      watcherFactory: factory.factory,
+      debounceMs: 5,
+      resolveSurface: () => {
+        resolveCalls++;
+      },
+    });
+    await handle.waitForIdle();
+    expect(resolveCalls).toBe(0);
+
+    factory.trigger("change", "game.project");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(resolveCalls).toBe(1);
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("two game.project events inside one debounce window coalesce to a single resolveSurface call", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr } = captureStreams();
+    const factory = makeFactory();
+    let resolveCalls = 0;
+
+    const handle = runWatch({
+      cwd,
+      stdout,
+      stderr,
+      watcherFactory: factory.factory,
+      debounceMs: 30,
+      resolveSurface: () => {
+        resolveCalls++;
+      },
+    });
+    await handle.waitForIdle();
+
+    factory.trigger("change", "game.project");
+    factory.trigger("change", "game.project");
+    await new Promise((r) => setTimeout(r, 60));
+    expect(resolveCalls).toBe(1);
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("a non-game.project, non-transpiler path invokes neither resolveSurface nor a rebuild", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr, out } = captureStreams();
+    const factory = makeFactory();
+    let resolveCalls = 0;
+
+    const handle = runWatch({
+      cwd,
+      stdout,
+      stderr,
+      watcherFactory: factory.factory,
+      debounceMs: 5,
+      resolveSurface: () => {
+        resolveCalls++;
+      },
+    });
+    await handle.waitForIdle();
+    expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
+
+    factory.trigger("change", "README.md");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(resolveCalls).toBe(0);
+    expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("a game.project event does not trigger a transpiler rebuild", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr, out } = captureStreams();
+    const factory = makeFactory();
+    let resolveCalls = 0;
+
+    const handle = runWatch({
+      cwd,
+      stdout,
+      stderr,
+      watcherFactory: factory.factory,
+      debounceMs: 5,
+      resolveSurface: () => {
+        resolveCalls++;
+      },
+    });
+    await handle.waitForIdle();
+    expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
+
+    factory.trigger("change", "game.project");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(resolveCalls).toBe(1);
+    expect(countMatches(out(), /wrote 1 files/g)).toBe(1);
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("json mode writes one resolve NDJSON line after the re-resolve settles", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr, out } = captureStreams();
+    const factory = makeFactory();
+
+    const handle = runWatch({
+      cwd,
+      stdout,
+      stderr,
+      json: true,
+      watcherFactory: factory.factory,
+      debounceMs: 5,
+      resolveSurface: () => {},
+    });
+    await handle.waitForIdle();
+
+    const before = out();
+    factory.trigger("change", "game.project");
+    await new Promise((r) => setTimeout(r, 20));
+    await handle.waitForIdle();
+
+    const newLines = out().slice(before.length).trimEnd().split("\n");
+    const last = JSON.parse(newLines[newLines.length - 1] as string) as Record<string, unknown>;
+    expect(last).toEqual({ command: "watch", event: "resolve", ok: true, written: [] });
+
+    handle.stop();
+    await handle.done;
+  });
+
+  test("stop() before the debounce fires cancels the pending re-resolve", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr } = captureStreams();
+    const factory = makeFactory();
+    let resolveCalls = 0;
+
+    const handle = runWatch({
+      cwd,
+      stdout,
+      stderr,
+      watcherFactory: factory.factory,
+      debounceMs: 50,
+      resolveSurface: () => {
+        resolveCalls++;
+      },
+    });
+    await handle.waitForIdle();
+
+    factory.trigger("change", "game.project");
+    handle.stop();
+    await handle.done;
+    await new Promise((r) => setTimeout(r, 80));
+    expect(resolveCalls).toBe(0);
+  });
+
+  test("waitForIdle() resolves only after an async resolveSurface settles", async () => {
+    writeProjectFile("tsconfig.json", DEFAULT_TSCONFIG);
+    writeProjectFile("src/main.ts", scriptSource(1));
+    const { stdout, stderr } = captureStreams();
+    const factory = makeFactory();
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((r) => {
+      release = r;
+    });
+
+    const handle = runWatch({
+      cwd,
+      stdout,
+      stderr,
+      watcherFactory: factory.factory,
+      debounceMs: 5,
+      resolveSurface: () => pending,
+    });
+    await handle.waitForIdle();
+
+    factory.trigger("change", "game.project");
+    await new Promise((r) => setTimeout(r, 20));
+
+    let settled = false;
+    const idleProbe = handle.waitForIdle().then(() => {
+      settled = true;
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(settled).toBe(false);
+
+    release?.();
+    await idleProbe;
+    expect(settled).toBe(true);
+
+    handle.stop();
+    await handle.done;
+  });
+});
