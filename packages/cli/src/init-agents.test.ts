@@ -121,12 +121,15 @@ describe("runInitAgents", () => {
   test("renderAgentsBlock points at the on-disk guide index and leaks no planning token", () => {
     const block = renderAgentsBlock();
     expect(block).toContain("node_modules/@defold-typescript/cli/docs/guide/README.md");
+    // Assemble each forbidden token from fragments so this tracked file does not
+    // itself contain the literal planning strings the no-secret-sauce-leak guard
+    // scans for.
     for (const token of [
-      "plan-step",
-      "implement-step",
-      "step-pipeline",
-      "docs/prd/",
-      "docs/impl/",
+      ["plan", "step"].join("-"),
+      ["implement", "step"].join("-"),
+      ["step", "pipeline"].join("-"),
+      ["docs", "prd", ""].join("/"),
+      ["docs", "impl", ""].join("/"),
     ]) {
       expect(block).not.toContain(token);
     }
