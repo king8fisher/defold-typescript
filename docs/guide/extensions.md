@@ -90,8 +90,9 @@ do carry docs.
 `resolve --json` emits one object describing the run. It reports
 `materializedSurface` (the written directory, or `null` when nothing was
 materialized) and, per extension, the `url`, the generated `namespaces`, the
-`scriptApiCount`, the `provenance` (`cache` or `download`), and whether it was
-`assetOnly`:
+`scriptApiCount`, the `provenance` (`cache` or `download`), whether it was
+`assetOnly`, the `resolvedVersion` (sha256 digest of the resolved archive
+bytes), and — when the project pins that url — the `pinnedVersion`:
 
 ```jsonc
 {
@@ -103,11 +104,43 @@ materialized) and, per extension, the `url`, the generated `namespaces`, the
       "namespaces": ["iap"],
       "scriptApiCount": 1,
       "provenance": "download",
-      "assetOnly": false
+      "assetOnly": false,
+      "resolvedVersion": "sha256:ab12…",
+      "pinnedVersion": "sha256:ab12…"
     }
   ]
 }
 ```
+
+A `pinnedVersion` field is only present when the project's `package.json`
+records a pin for that `url`.
+
+## Pinning extension versions
+
+A declared `dependencies#N` URL is the only identity `resolve` reads, and it
+is often a **moving** ref (`.../archive/master.zip`) — the same URL can
+resolve to different bytes over time. The reproducible identity of *what was
+actually resolved* is therefore the sha256 digest of the resolved archive
+bytes, not a URL segment. `resolve` records that digest as the extension's
+version and seeds it into the project's `package.json` when absent
+(never clobbering an existing pin):
+
+```jsonc
+"defold-typescript": {
+  "extensions": {
+    "https://github.com/defold/extension-iap/archive/main.zip": "sha256:ab12…"
+  }
+}
+```
+
+A committed pin is human-owned intent. When the URL later yields different
+bytes, the freshly-resolved digest no longer matches the pinned one — the
+`resolvedVersion` and `pinnedVersion` in `--json` differ, which is the
+explicit, visible upgrade signal: bump the pin, commit it, done.
+
+This slice is **recorded and reported only**. `resolve` does not fail or warn
+when `resolvedVersion` and `pinnedVersion` differ; the mismatch is meant to
+be visible to a human, not enforced. Enforcement is a follow-up.
 
 ## Cache location
 

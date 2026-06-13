@@ -92,6 +92,7 @@ describe("runResolve", () => {
         namespaces: ["alpha"],
         scriptApiCount: 1,
         assetOnly: false,
+        resolvedVersion: expect.stringMatching(/^sha256:[0-9a-f]{64}$/) as unknown as string,
       },
     ]);
   });
@@ -115,8 +116,135 @@ describe("runResolve", () => {
     expect(result.materializedSurface).toBeNull();
     expect(existsSync(join(cwd, ".defold-types"))).toBe(false);
     expect(result.extensions).toEqual([
-      { url, provenance: "download", namespaces: [], scriptApiCount: 0, assetOnly: true },
+      {
+        url,
+        provenance: "download",
+        namespaces: [],
+        scriptApiCount: 0,
+        assetOnly: true,
+        resolvedVersion: expect.stringMatching(/^sha256:[0-9a-f]{64}$/) as unknown as string,
+      },
     ]);
+  });
+
+  test("carries resolvedVersion and matches pinnedVersion when the project pins the url", async () => {
+    const cwd = tmp();
+    const url = "https://example.com/alpha.zip";
+    writeProject(cwd, `[project]\ndependencies#0 = ${url}\n`);
+    writeFileSync(
+      join(cwd, "package.json"),
+      `${JSON.stringify(
+        { "defold-typescript": { extensions: { [url]: "sha256:pinned" } } },
+        null,
+        2,
+      )}\n`,
+    );
+    const byKey: Record<string, FakeArchive> = {
+      [extensionArchiveKey(url)]: {
+        entries: ["ext/api/alpha.script_api"],
+        contents: { "ext/api/alpha.script_api": ALPHA },
+      },
+    };
+
+    const result = await runResolve({
+      cwd,
+      cacheDir: tmp(),
+      download: someBytes,
+      readZip: makeReadZip(byKey),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.extensions).toHaveLength(1);
+    const report = result.extensions[0] as {
+      resolvedVersion: string;
+      pinnedVersion?: string;
+    };
+    expect(report.resolvedVersion).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(report.pinnedVersion).toBe("sha256:pinned");
+  });
+
+  test("omits pinnedVersion when the project has no pin for the url", async () => {
+    const cwd = tmp();
+    const url = "https://example.com/alpha.zip";
+    writeProject(cwd, `[project]\ndependencies#0 = ${url}\n`);
+    const byKey: Record<string, FakeArchive> = {
+      [extensionArchiveKey(url)]: {
+        entries: ["ext/api/alpha.script_api"],
+        contents: { "ext/api/alpha.script_api": ALPHA },
+      },
+    };
+
+    const result = await runResolve({
+      cwd,
+      cacheDir: tmp(),
+      download: someBytes,
+      readZip: makeReadZip(byKey),
+    });
+
+    expect(result.ok).toBe(true);
+    const report = result.extensions[0] as { resolvedVersion: string; pinnedVersion?: string };
+    expect(report.resolvedVersion).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(report.pinnedVersion).toBeUndefined();
+  });
+
+  test("seeds an absent pin into package.json from the resolved archive digest", async () => {
+    const cwd = tmp();
+    const url = "https://example.com/alpha.zip";
+    writeProject(cwd, `[project]\ndependencies#0 = ${url}\n`);
+    const pkgPath = join(cwd, "package.json");
+    writeFileSync(pkgPath, "{}\n");
+    const byKey: Record<string, FakeArchive> = {
+      [extensionArchiveKey(url)]: {
+        entries: ["ext/api/alpha.script_api"],
+        contents: { "ext/api/alpha.script_api": ALPHA },
+      },
+    };
+
+    const result = await runResolve({
+      cwd,
+      cacheDir: tmp(),
+      download: someBytes,
+      readZip: makeReadZip(byKey),
+    });
+
+    expect(result.ok).toBe(true);
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+      "defold-typescript"?: { extensions?: Record<string, string> };
+    };
+    expect(pkg["defold-typescript"]?.extensions?.[url]).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  test("preserves an existing pin instead of clobbering it", async () => {
+    const cwd = tmp();
+    const url = "https://example.com/alpha.zip";
+    writeProject(cwd, `[project]\ndependencies#0 = ${url}\n`);
+    const pkgPath = join(cwd, "package.json");
+    writeFileSync(
+      pkgPath,
+      `${JSON.stringify(
+        { "defold-typescript": { extensions: { [url]: "sha256:kept" } } },
+        null,
+        2,
+      )}\n`,
+    );
+    const byKey: Record<string, FakeArchive> = {
+      [extensionArchiveKey(url)]: {
+        entries: ["ext/api/alpha.script_api"],
+        contents: { "ext/api/alpha.script_api": ALPHA },
+      },
+    };
+
+    await runResolve({
+      cwd,
+      cacheDir: tmp(),
+      download: someBytes,
+      readZip: makeReadZip(byKey),
+    });
+
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+      "defold-typescript"?: { extensions?: Record<string, string> };
+    };
+    expect(pkg["defold-typescript"]?.extensions?.[url]).toBe("sha256:kept");
   });
 
   test("a project with no [dependencies] resolves clean with no writes", async () => {

@@ -8,7 +8,7 @@
 // download/readZip/cacheDir seams stay injectable so the orchestration is
 // network-free under test.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   type DownloadExtensionArchive,
@@ -22,6 +22,7 @@ import {
   ensureExtensionTypesReference,
   materializeExtensionDeclarations,
 } from "./extension-materialize";
+import { mergeResolvedVersionPins, readExtensionVersionPins } from "./extension-version";
 
 export interface ResolvedExtensionReport {
   readonly url: string;
@@ -29,6 +30,8 @@ export interface ResolvedExtensionReport {
   readonly namespaces: string[];
   readonly scriptApiCount: number;
   readonly assetOnly: boolean;
+  readonly resolvedVersion: string;
+  readonly pinnedVersion?: string;
 }
 
 export interface RunResolveOptions {
@@ -47,6 +50,23 @@ export interface RunResolveResult {
 
 function hasProjectSection(text: string): boolean {
   return text.split("\n").some((line) => line.trim() === "[project]");
+}
+
+function readExistingPackageJson(cwd: string): { value: unknown; writable: boolean } {
+  const pkgPath = join(cwd, "package.json");
+  if (!existsSync(pkgPath)) {
+    return { value: {}, writable: true };
+  }
+  try {
+    return { value: JSON.parse(readFileSync(pkgPath, "utf8")) as unknown, writable: true };
+  } catch {
+    return { value: null, writable: false };
+  }
+}
+
+function seedExtensionPins(cwd: string, existing: unknown, resolved: Record<string, string>): void {
+  const merged = mergeResolvedVersionPins(existing, resolved);
+  writeFileSync(join(cwd, "package.json"), `${JSON.stringify(merged, null, 2)}\n`);
 }
 
 export async function runResolve(opts: RunResolveOptions): Promise<RunResolveResult> {
@@ -85,13 +105,41 @@ export async function runResolve(opts: RunResolveOptions): Promise<RunResolveRes
   const { materializedDir } = materializeExtensionDeclarations({ cwd, bundles });
   ensureExtensionTypesReference(cwd, materializedDir);
 
-  const extensions: ResolvedExtensionReport[] = bundles.map((bundle) => ({
-    url: bundle.url,
-    provenance: bundle.provenance,
-    namespaces: bundle.declarations.map((d) => d.namespace).sort(),
-    scriptApiCount: bundle.declarations.length,
-    assetOnly: bundle.assetOnly,
-  }));
+  const existingPkg = readExistingPackageJson(cwd);
+  const pins = readExtensionVersionPins(existingPkg.value);
+  const resolvedForSeed: Record<string, string> = {};
+  for (const bundle of bundles) {
+    if (!(bundle.url in pins)) {
+      resolvedForSeed[bundle.url] = bundle.resolvedVersion;
+    }
+  }
+  if (Object.keys(resolvedForSeed).length > 0 && existingPkg.writable) {
+    seedExtensionPins(cwd, existingPkg.value, resolvedForSeed);
+  }
+
+  const extensions: ResolvedExtensionReport[] = bundles.map((bundle) => {
+    const report: {
+      url: string;
+      provenance: ExtensionArchiveProvenance;
+      namespaces: string[];
+      scriptApiCount: number;
+      assetOnly: boolean;
+      resolvedVersion: string;
+      pinnedVersion?: string;
+    } = {
+      url: bundle.url,
+      provenance: bundle.provenance,
+      namespaces: bundle.declarations.map((d) => d.namespace).sort(),
+      scriptApiCount: bundle.declarations.length,
+      assetOnly: bundle.assetOnly,
+      resolvedVersion: bundle.resolvedVersion,
+    };
+    const pin = pins[bundle.url];
+    if (pin !== undefined) {
+      report.pinnedVersion = pin;
+    }
+    return report;
+  });
 
   return { ok: true, materializedSurface: materializedDir, extensions };
 }

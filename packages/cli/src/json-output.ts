@@ -6,6 +6,8 @@ export interface ResolvedExtensionReportJson {
   readonly namespaces: readonly string[];
   readonly scriptApiCount: number;
   readonly assetOnly: boolean;
+  readonly resolvedVersion: string;
+  readonly pinnedVersion?: string;
 }
 
 export interface RenderResultInput {

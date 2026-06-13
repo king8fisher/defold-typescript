@@ -1737,7 +1737,13 @@ describe("dispatch resolve", () => {
     const parsed = JSON.parse(out()) as {
       command: string;
       ok: boolean;
-      extensions: { url: string; namespaces: string[]; scriptApiCount: number }[];
+      extensions: {
+        url: string;
+        namespaces: string[];
+        scriptApiCount: number;
+        resolvedVersion?: string;
+        pinnedVersion?: string;
+      }[];
     };
     expect(parsed.command).toBe("resolve");
     expect(parsed.ok).toBe(true);
@@ -1748,8 +1754,33 @@ describe("dispatch resolve", () => {
         namespaces: ["alpha"],
         scriptApiCount: 1,
         assetOnly: false,
+        resolvedVersion: expect.stringMatching(/^sha256:[0-9a-f]{64}$/) as unknown as string,
       },
     ] as unknown as typeof parsed.extensions);
+  });
+
+  test("--json includes pinnedVersion when the project pins the url", async () => {
+    const { io, out } = captureStreams();
+    const url = "https://example.com/alpha.zip";
+    writeProject(`[project]\ndependencies#0 = ${url}\n`);
+    writeFileSync(
+      path.join(cwd, "package.json"),
+      `${JSON.stringify(
+        { "defold-typescript": { extensions: { [url]: "sha256:pinned" } } },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const code = await dispatch(["resolve", cwd, "--json"], io, resolveInternals(url));
+
+    expect(code).toBe(0);
+    const parsed = JSON.parse(out()) as {
+      extensions: { resolvedVersion: string; pinnedVersion?: string }[];
+    };
+    expect(parsed.extensions).toHaveLength(1);
+    expect(parsed.extensions[0]?.resolvedVersion).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(parsed.extensions[0]?.pinnedVersion).toBe("sha256:pinned");
   });
 
   test("a missing game.project returns 1 and, under --json, reports ok:false", async () => {

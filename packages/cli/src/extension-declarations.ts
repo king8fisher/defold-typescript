@@ -20,6 +20,7 @@ export interface ExtensionDeclarations {
   readonly url: string;
   readonly provenance: ExtensionArchiveProvenance;
   readonly assetOnly: boolean;
+  readonly resolvedVersion: string;
   readonly declarations: EmittedExtension[];
 }
 
@@ -37,6 +38,7 @@ export async function resolveExtensionDeclarations(
         url: archive.url,
         provenance: archive.provenance,
         assetOnly: true,
+        resolvedVersion: archive.resolvedVersion,
         declarations: [],
       });
       continue;
@@ -50,6 +52,7 @@ export async function resolveExtensionDeclarations(
       url: archive.url,
       provenance: archive.provenance,
       assetOnly: false,
+      resolvedVersion: archive.resolvedVersion,
       declarations,
     });
   }
