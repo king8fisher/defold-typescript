@@ -6,7 +6,7 @@
 // `ZipAccessor`) keyed by the arbitrary extension URL instead of a Defold version.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { resolveTypesPackageRoot } from "./api-registry";
@@ -15,6 +15,7 @@ import {
   type ExtensionDependency,
   type ResolvedExtension,
 } from "./extension-deps";
+import { extensionArchiveVersion } from "./extension-version";
 
 export type ExtensionArchiveProvenance = "cache" | "download";
 
@@ -33,6 +34,7 @@ export type ReadExtensionZip = (zipPath: string) => ExtensionZip | Promise<Exten
 export interface ResolvedExtensionArchive extends ResolvedExtension {
   readonly provenance: ExtensionArchiveProvenance;
   readonly archivePath: string;
+  readonly resolvedVersion: string;
 }
 
 export interface ResolveExtensionArchiveOptions {
@@ -89,18 +91,25 @@ export async function resolveExtensionArchive(
   const archivePath = join(opts.cacheDir, extensionArchiveKey(dep.url), "archive.zip");
 
   let provenance: ExtensionArchiveProvenance;
+  let bytes: Uint8Array;
   if (existsSync(archivePath)) {
     provenance = "cache";
+    bytes = new Uint8Array(readFileSync(archivePath));
   } else {
     const download = opts.download ?? fetchExtensionArchive;
-    const bytes = await download(dep.url);
+    bytes = await download(dep.url);
     mkdirSync(dirname(archivePath), { recursive: true });
     writeFileSync(archivePath, bytes);
     provenance = "download";
   }
 
   const zip = await open(archivePath);
-  return { ...classifyExtension(dep.url, zip.entries()), provenance, archivePath };
+  return {
+    ...classifyExtension(dep.url, zip.entries()),
+    provenance,
+    archivePath,
+    resolvedVersion: extensionArchiveVersion(bytes),
+  };
 }
 
 export async function resolveExtensions(

@@ -57,6 +57,7 @@ describe("renderResult", () => {
           namespaces: ["alpha"],
           scriptApiCount: 1,
           assetOnly: false,
+          resolvedVersion: "sha256:abc",
         },
       ],
     });
@@ -71,6 +72,7 @@ describe("renderResult", () => {
         namespaces: ["alpha"],
         scriptApiCount: 1,
         assetOnly: false,
+        resolvedVersion: "sha256:abc",
       },
     ]);
   });
