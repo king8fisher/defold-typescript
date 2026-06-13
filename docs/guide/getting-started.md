@@ -150,7 +150,7 @@ A failure flips `ok` to `false` and carries an `error` string instead of
 
 `watch` is long-running, so `--json` streams **newline-delimited JSON (NDJSON)** —
 one object per line, one line per event. The full lifecycle reads
-`start` → `build` → `rebuild`* → `stop`:
+`start` → `build` → `rebuild`* → `resolve`* → `stop`:
 
 ```sh
 bunx @defold-typescript/cli watch --json
@@ -158,8 +158,13 @@ bunx @defold-typescript/cli watch --json
 # {"command":"watch","event":"build","ok":true,"written":[...]}
 # {"command":"watch","event":"rebuild","ok":true,"written":[...],"changed":["src/main.ts"],"removed":[]}
 # {"command":"watch","event":"rebuild","ok":false,"error":"..."}
+# {"command":"watch","event":"resolve","ok":true,"written":[]}
 # {"command":"watch","event":"stop","ok":true,"written":[]}
 ```
+
+A `resolve` event is emitted whenever a `game.project` save re-resolves the
+extension surface (re-materializing `.defold-types/extensions/` from the
+declared `[dependencies]` URLs).
 
 `start` arrives once, before the initial full build — the process is up and
 listening. `stop` arrives once on graceful shutdown. A failed startup (missing

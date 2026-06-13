@@ -24,6 +24,7 @@ export interface RunWatchOptions {
   readonly watcherFactory?: WatcherFactory;
   readonly syncSurface?: () => void;
   readonly componentWatcherFactory?: WatcherFactory;
+  readonly resolveSurface?: () => void | Promise<void>;
   readonly json?: boolean;
 }
 
@@ -90,14 +91,16 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
 
   let scheduled: ReturnType<typeof setTimeout> | null = null;
   let syncScheduled: ReturnType<typeof setTimeout> | null = null;
+  let resolveScheduled: ReturnType<typeof setTimeout> | null = null;
   let rebuildBusy = false;
   let syncBusy = false;
+  let resolveBusy = false;
   let stopped = false;
   let idleResolvers: Array<() => void> = [];
   const pending = new Set<string>();
 
   function notifyIdle(): void {
-    if (rebuildBusy || syncBusy) return;
+    if (rebuildBusy || syncBusy || resolveBusy) return;
     const resolvers = idleResolvers;
     idleResolvers = [];
     for (const resolve of resolvers) resolve();
@@ -137,7 +140,14 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
 
   function onEvent(e: WatchEvent): void {
     if (stopped) return;
-    if (!e.path || !isTranspilerSource(e.path)) return;
+    if (!e.path) return;
+    if (toPosix(e.path) === "game.project") {
+      resolveBusy = true;
+      if (resolveScheduled) clearTimeout(resolveScheduled);
+      resolveScheduled = setTimeout(runResolveSurface, debounceMs);
+      return;
+    }
+    if (!isTranspilerSource(e.path)) return;
     const key = toPosix(e.path);
     if (!isFileIncluded(key, config.include)) return;
     rebuildBusy = true;
@@ -172,6 +182,25 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
     ? opts.componentWatcherFactory(cwd, onComponentEvent)
     : null;
 
+  async function runResolveSurface(): Promise<void> {
+    resolveScheduled = null;
+    try {
+      await opts.resolveSurface?.();
+      if (opts.json) {
+        stdout.write(renderWatchEvent({ event: "resolve" }));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (opts.json) {
+        stdout.write(renderWatchEvent({ event: "resolve", error: message }));
+      } else {
+        stderr.write(`${message}\n`);
+      }
+    }
+    resolveBusy = false;
+    notifyIdle();
+  }
+
   function stop(): void {
     if (stopped) return;
     stopped = true;
@@ -183,6 +212,10 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
       clearTimeout(syncScheduled);
       syncScheduled = null;
     }
+    if (resolveScheduled) {
+      clearTimeout(resolveScheduled);
+      resolveScheduled = null;
+    }
     watcher.close();
     componentWatcher?.close();
     if (opts.json) {
@@ -190,12 +223,13 @@ export function runWatch(opts: RunWatchOptions): RunWatchHandle {
     }
     rebuildBusy = false;
     syncBusy = false;
+    resolveBusy = false;
     notifyIdle();
     resolveDone(0);
   }
 
   function waitForIdle(): Promise<void> {
-    if (!rebuildBusy && !syncBusy) return Promise.resolve();
+    if (!rebuildBusy && !syncBusy && !resolveBusy) return Promise.resolve();
     return new Promise<void>((resolve) => {
       idleResolvers.push(resolve);
     });

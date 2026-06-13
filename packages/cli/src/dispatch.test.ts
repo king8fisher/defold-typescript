@@ -60,6 +60,20 @@ function expectedWallTsconfig(typesEntrypoint: string): unknown {
   };
 }
 
+const ALPHA = `
+- name: alpha
+  type: table
+  desc: Alpha extension.
+  members:
+  - name: do_alpha
+    type: function
+    desc: does alpha
+    parameters:
+      - name: self
+        type: object
+        desc: the script self
+`;
+
 describe("dispatch", () => {
   test("init <path> runs runInit and returns 0 on success", () => {
     writeFileSync(path.join(cwd, "game.project"), "[project]\n");
@@ -1098,6 +1112,141 @@ describe("dispatch", () => {
     expect(err()).toMatch(/tsconfig\.json/);
     expect(opened).toBe(false);
   });
+
+  test("watch re-resolves the extension surface when game.project changes", async () => {
+    const tsconfig = JSON.stringify(
+      { compilerOptions: { strict: true }, include: ["src/**/*.ts"] },
+      null,
+      2,
+    );
+    writeFileSync(path.join(cwd, "tsconfig.json"), tsconfig);
+    const srcDir = path.join(cwd, "src");
+    mkdirSync(srcDir, { recursive: true });
+    writeFileSync(path.join(srcDir, "main.ts"), "export const a = 1;\n");
+    writeFileSync(path.join(cwd, "main.script"), "");
+
+    const sourceGeneratedDir = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-src-"));
+    writeFileSync(path.join(sourceGeneratedDir, "label.d.ts"), `declare const __label: unknown;\n`);
+
+    const url = "https://example.com/alpha.zip";
+    writeFileSync(path.join(cwd, "game.project"), `[project]\ndependencies#0 = ${url}\n`);
+
+    const { io, err } = captureStreams();
+    let triggerMain: ((kind: "change" | "rename", rel: string) => void) | undefined;
+    const main: WatcherFactory = (_dir, onEvent): Watcher => {
+      triggerMain = (kind, rel) => onEvent({ kind, path: rel });
+      return { close() {} };
+    };
+    const component: WatcherFactory = (_dir, _onEvent): Watcher => ({ close() {} });
+
+    const cacheDir = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-ext-cache-"));
+    let handle: RunWatchHandle | undefined;
+    const result = dispatch(["watch", cwd], io, {
+      debounceMs: 5,
+      watcherFactory: main,
+      componentWatcherFactory: component,
+      sourceGeneratedDir,
+      resolveInternals: {
+        cacheDir,
+        download: async () => new TextEncoder().encode("z"),
+        readZip: (zipPath: string) => {
+          if (path.basename(path.dirname(zipPath)) !== extensionArchiveKey(url)) {
+            throw new Error(`no fake archive for ${zipPath}`);
+          }
+          return {
+            entries: () => ["ext/api/alpha.script_api"],
+            read: () => ALPHA,
+          };
+        },
+      },
+      onWatchStart: (h) => {
+        handle = h;
+      },
+    });
+
+    await handle?.waitForIdle();
+
+    const extPath = path.join(cwd, ".defold-types", "extensions", "alpha.d.ts");
+    expect(existsSync(extPath)).toBe(false);
+
+    writeFileSync(path.join(cwd, "game.project"), `[project]\ndependencies#0 = ${url}\n`);
+    triggerMain?.("change", "game.project");
+    await handle?.waitForIdle();
+
+    expect(existsSync(extPath)).toBe(true);
+    const contents = readFileSync(extPath, "utf8");
+    expect(contents).toContain("do_alpha");
+
+    expect(err()).toBe("");
+
+    handle?.stop();
+    const code = await result;
+    expect(code).toBe(0);
+
+    rmSync(sourceGeneratedDir, { recursive: true, force: true });
+    rmSync(cacheDir, { recursive: true, force: true });
+  });
+
+  test("watch re-resolves a game.project with no [dependencies] without writing an extension surface", async () => {
+    const tsconfig = JSON.stringify(
+      { compilerOptions: { strict: true }, include: ["src/**/*.ts"] },
+      null,
+      2,
+    );
+    writeFileSync(path.join(cwd, "tsconfig.json"), tsconfig);
+    const srcDir = path.join(cwd, "src");
+    mkdirSync(srcDir, { recursive: true });
+    writeFileSync(path.join(srcDir, "main.ts"), "export const a = 1;\n");
+    writeFileSync(path.join(cwd, "main.script"), "");
+    writeFileSync(path.join(cwd, "game.project"), "[project]\n");
+
+    const sourceGeneratedDir = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-src-"));
+    writeFileSync(path.join(sourceGeneratedDir, "label.d.ts"), `declare const __label: unknown;\n`);
+
+    const { io, err } = captureStreams();
+    let triggerMain: ((kind: "change" | "rename", rel: string) => void) | undefined;
+    const main: WatcherFactory = (_dir, onEvent): Watcher => {
+      triggerMain = (kind, rel) => onEvent({ kind, path: rel });
+      return { close() {} };
+    };
+    const component: WatcherFactory = (_dir, _onEvent): Watcher => ({ close() {} });
+
+    const cacheDir = mkdtempSync(path.join(os.tmpdir(), "defold-typescript-ext-cache-"));
+    let handle: RunWatchHandle | undefined;
+    const result = dispatch(["watch", cwd], io, {
+      debounceMs: 5,
+      watcherFactory: main,
+      componentWatcherFactory: component,
+      sourceGeneratedDir,
+      resolveInternals: {
+        cacheDir,
+        download: async () => new TextEncoder().encode("z"),
+        readZip: (): ExtensionZip => ({
+          entries: () => [],
+          read: () => "",
+        }),
+      },
+      onWatchStart: (h) => {
+        handle = h;
+      },
+    });
+
+    await handle?.waitForIdle();
+
+    triggerMain?.("change", "game.project");
+    await handle?.waitForIdle();
+
+    const extDir = path.join(cwd, ".defold-types", "extensions");
+    expect(existsSync(extDir)).toBe(false);
+    expect(err()).toBe("");
+
+    handle?.stop();
+    const code = await result;
+    expect(code).toBe(0);
+
+    rmSync(sourceGeneratedDir, { recursive: true, force: true });
+    rmSync(cacheDir, { recursive: true, force: true });
+  });
 });
 
 describe("dispatch wall command", () => {
@@ -1453,20 +1602,6 @@ describe("dispatch defold", () => {
 });
 
 describe("dispatch resolve", () => {
-  const ALPHA = `
-- name: alpha
-  type: table
-  desc: Alpha extension.
-  members:
-  - name: do_alpha
-    type: function
-    desc: does alpha
-    parameters:
-      - name: self
-        type: object
-        desc: the script self
-`;
-
   function resolveInternals(url: string): {
     resolveInternals: {
       download: () => Promise<Uint8Array>;
